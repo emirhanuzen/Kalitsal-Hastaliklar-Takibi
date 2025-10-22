@@ -50,15 +50,49 @@ except Exception as e:
     SQL_SERVER_CONNECTION_STRING = None
 
 # --- 2. YARDIMCI FONKSİYONLAR ---
+# app.py içindeki get_hastalik_listesi fonksiyonunun YENİ DEBUG hali
+
 def get_hastalik_listesi(sql_conn):
+    """SQL Server'dan hastalık listesini ve oranlarını çeker."""
     hastaliklar = []
+    cursor = None  # Hata durumunda kapatabilmek için
     try:
+        # Bağlantının açık olduğundan emin olalım (gerçi buraya açık gelmeli)
+        if not sql_conn or sql_conn.closed:
+            print("!!! HATA (get_hastalik_listesi): Fonksiyona kapalı veya geçersiz SQL bağlantısı geldi.",
+                  file=sys.stderr)
+            return []
+
         cursor = sql_conn.cursor()
+        print(
+            ">>> DEBUG (get_hastalik_listesi): Cursor oluşturuldu. Sorgu çalıştırılıyor: SELECT HastalikAdi, GorulmeOrani FROM Hastaliklar")  # <<< DEBUG >>>
+
+        # Sorguyu çalıştır
         cursor.execute("SELECT HastalikAdi, GorulmeOrani FROM Hastaliklar")
-        hastaliklar = cursor.fetchall()
+        print(">>> DEBUG (get_hastalik_listesi): Sorgu çalıştırıldı. Fetchall deneniyor...")  # <<< DEBUG >>>
+
+        # Tüm sonuçları çek
+        hastaliklar = cursor.fetchall()  # Bu satırda hata olabilir mi?
+
+        print(f">>> DEBUG (get_hastalik_listesi): Sorgu sonucu (fetchall): {hastaliklar}")  # <<< DEBUG >>>
+
+        # ÖNEMLİ: Cursor'ı burada kapatalım ki bağlantı açık kalsın
         cursor.close()
+        print(">>> DEBUG (get_hastalik_listesi): Cursor kapatıldı.")  # <<< DEBUG >>>
+
     except Exception as e:
-        print(f"Hastalık listesi çekilemedi: {e}", file=sys.stderr)
+        # Hatanın detayını yazdır
+        print(f"!!! HATA (get_hastalik_listesi): Hastalık listesi çekilemedi: {e}", file=sys.stderr)
+        if cursor:
+            try:
+                cursor.close()  # Hata olsa bile cursor'ı kapatmayı dene
+            except:
+                pass
+        # Hata durumunda boş liste döndürdüğümüzden emin olalım
+        hastaliklar = []
+
+    # Fonksiyonun ne döndürdüğünü de yazdıralım
+    print(f">>> DEBUG (get_hastalik_listesi): Fonksiyon şu listeyi döndürüyor: {hastaliklar}")  # <<< DEBUG >>>
     return hastaliklar
 
 # --- 3. ANA KAYIT API ENDPOINT'İ ---
