@@ -57,7 +57,10 @@ except Exception as e:
     SQL_SERVER_CONNECTION_STRING = None
 
 # --- 2. YARDIMCI FONKSİYON: Hastalık Listesi ---
+# app.py içindeki get_hastalik_listesi fonksiyonunun YENİ HALİ
+
 def get_hastalik_listesi(sql_conn):
+    """SQL Server'dan hastalık adı, oranı VE KALITIM ŞEKLİNİ çeker."""
     hastaliklar = []
     cursor = None
     try:
@@ -65,14 +68,20 @@ def get_hastalik_listesi(sql_conn):
              print("!!! HATA (get_hastalik_listesi): Geçersiz SQL bağlantısı.", file=sys.stderr)
              return []
         cursor = sql_conn.cursor()
-        cursor.execute("SELECT HastalikAdi, GorulmeOrani FROM Hastaliklar")
-        hastaliklar = cursor.fetchall()
+        # <<< DEĞİŞİKLİK BURADA: KalitimSekli kolonunu da seçiyoruz >>>
+        sorgu = "SELECT HastalikAdi, GorulmeOrani, KalitimSekli FROM Hastaliklar"
+        print(f">>> DEBUG (get_hastalik_listesi): Sorgu çalıştırılıyor: {sorgu}")
+        cursor.execute(sorgu)
+        hastaliklar = cursor.fetchall() # Sonuçlar [(Ad1, Oran1, Şekil1), ...] formatında gelir
+        print(f">>> DEBUG (get_hastalik_listesi): Sorgu sonucu (fetchall): {hastaliklar}")
     except Exception as e:
         print(f"!!! HATA (get_hastalik_listesi): Hastalık listesi çekilemedi: {e}", file=sys.stderr)
+        hastaliklar = [] # Hata durumunda boş liste döndür
     finally:
          if cursor:
               try: cursor.close()
               except: pass
+    print(f">>> DEBUG (get_hastalik_listesi): Fonksiyon şu listeyi döndürüyor: {hastaliklar}")
     return hastaliklar
 
 # --- 3. ANA KAYIT API ENDPOINT'İ ---
