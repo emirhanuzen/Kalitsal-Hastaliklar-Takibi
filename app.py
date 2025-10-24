@@ -24,7 +24,7 @@ app.config['JSON_AS_ASCII'] = False # Türkçe karakterler için
 
 # --- 1. VERİTABANI BAĞLANTILARI ---
 # Ayarları kendi sistemine göre düzenlemeyi unutma!
-MONGO_CONNECTION_STRING = "mongodb://localhost:27017/"
+MONGO_CONNECTION_STRING = 'mongodb+srv://Emirhan_Uzen:Codegen01"@krap.uczuzhr.mongodb.net/?appName=KRAP'
 SQL_SERVER_SUNUCU_ADI = 'localhost' # SSMS'teki sunucu adın
 SQL_SERVER_VERITABANI_ADI = 'KRAP_DB' # Oluşturduğun DB
 
