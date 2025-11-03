@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profil - {{ user.isim }} {{ user.soyad }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px 0;
+        }
+        .profile-card {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+        .profile-header {
+            text-align: center;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #f0f0f0;
+            margin-bottom: 30px;
+        }
+        .profile-header h1 {
+            color: #667eea;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+        .info-card {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .info-label {
+            font-weight: 600;
+            color: #764ba2;
+            margin-bottom: 5px;
+        }
+        .info-value {
+            color: #333;
+            font-size: 1.1em;
+        }
+        .family-tree-container {
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            margin-top: 20px;
+            overflow-x: auto;
+            position: relative;
+        }
+        .tree-wrapper {
+            position: relative;
+            min-height: 400px;
+        }
+        svg.tree-connections {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+        .generation-level {
+            margin-bottom: 40px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: flex-start;
+            gap: 20px;
+            position: relative;
+        }
+        .generation-title {
+            width: 100%;
+            text-align: center;
+            font-weight: 600;
+            color: #764ba2;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+        }
+        .tree-node {
+            display: inline-block;
+            text-align: center;
+            flex: 0 0 auto;
+            position: relative;
+            z-index: 2;
+            margin: 10px;
+        }
+        .node-role {
+            position: absolute;
+            top: -25px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #667eea;
+            color: white;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 0.75em;
+            font-weight: 600;
+            white-space: nowrap;
+            z-index: 3;
+        }
+        .node-role::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            border-top: 5px solid #667eea;
+        }
+        .node-card {
+            background: white;
+            border: 2px solid #667eea;
+            border-radius: 10px;
+            padding: 15px;
+            min-width: 200px;
+            max-width: 250px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+        }
+        .node-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        .node-card.current-user {
+            border-color: #28a745;
+            background: #d4edda;
+            font-weight: 600;
+        }
+        .node-name {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        .node-details {
+            font-size: 0.85em;
+            color: #666;
+            margin-top: 5px;
+        }
+        .node-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 5px;
+            font-size: 0.75em;
+            margin: 2px;
+        }
+        .badge-hasta {
+            background: #dc3545;
+            color: white;
+        }
+        .badge-tasiyici {
+            background: #ffc107;
+            color: #333;
+        }
+        .badge-saglikli {
+            background: #28a745;
+            color: white;
+        }
+        .tree-line {
+            border-top: 2px solid #667eea;
+            width: 50%;
+            margin: 0 auto;
+            height: 20px;
+        }
+        .hastalik-item {
+            background: white;
+            border-left: 4px solid #667eea;
+            padding: 10px 15px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+        }
+        .hastalik-name {
+            font-weight: 600;
+            color: #333;
+        }
+        .hastalik-status {
+            color: #666;
+            font-size: 0.9em;
+        }
+        .btn-home {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            text-decoration: none;
+            display: inline-block;
+            margin-top: 20px;
+        }
+        .btn-home:hover {
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row justify-content-center">
+            <div class="col-lg-10 col-xl-8">
+                
+                <!-- Profil Bilgileri -->
+                <div class="profile-card mb-4" style="border: 3px double #667eea;">
+                    <h2 class="text-center mb-4" style="color: #764ba2; font-weight: 700;">
+                        <i class="bi bi-person-circle"></i> Profil Bilgileri
+                    </h2>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <div class="info-card">
+                                <div class="info-label"><i class="bi bi-person-fill"></i> İsim</div>
+                                <div class="info-value">{{ user.isim }} {{ user.soyad }}</div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <div class="info-card">
+                                <div class="info-label"><i class="bi bi-envelope-fill"></i> E-posta</div>
+                                <div class="info-value">{{ user.email }}</div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <div class="info-card">
+                                <div class="info-label"><i class="bi bi-calendar-event"></i> Doğum Tarihi</div>
+                                <div class="info-value">{{ user.dogum_tarihi }}</div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <div class="info-card">
+                                <div class="info-label"><i class="bi bi-credit-card"></i> Kurgusal TC</div>
+                                <div class="info-value">{{ user.kurgusal_tc }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Kalıtsal Hastalık Risk Analizi -->
+                {% if risk_analizi %}
+                <div class="profile-card mb-4" style="border: 3px double #667eea;">
+                    <h3 class="text-center mb-3" style="color: #764ba2; font-weight: 700;">
+                        <i class="bi bi-shield-exclamation-fill"></i> Risk Analizi
+                    </h3>
+                    <p class="text-muted mb-3 text-center">Aşağıdaki analiz, önceki kuşaklardaki bireylerden size hastalık geçme olasılığını gösterir.</p>
+                {% for risk in risk_analizi %}
+                <div class="hastalik-item">
+                    <div class="hastalik-name mb-2">
+                        <strong>{{ risk.hastalik }}</strong>
+                        <span class="badge bg-secondary ms-2">{{ risk.kalitim_sekli }}</span>
+                    </div>
+                    <div class="hastalik-status mb-2">
+                        <div><strong>Risk Seviyesi:</strong> 
+                            {% if risk.risk_seviyesi == "Çok Yüksek" %}
+                                <span class="node-badge badge-hasta">{{ risk.risk_seviyesi }}</span>
+                            {% elif risk.risk_seviyesi == "Yüksek" %}
+                                <span class="node-badge" style="background: #fd7e14; color: white;">{{ risk.risk_seviyesi }}</span>
+                            {% elif risk.risk_seviyesi == "Orta" %}
+                                <span class="node-badge badge-tasiyici">{{ risk.risk_seviyesi }}</span>
+                            {% else %}
+                                <span class="node-badge badge-saglikli">{{ risk.risk_seviyesi }}</span>
+                            {% endif %}
+                        </div>
+                        {% if risk.tasiyici_olabilirlik and risk.tasiyici_olabilirlik > 0 %}
+                        <div class="mt-1"><strong>Taşıyıcı Olma Olasılığı:</strong> <span style="color: #ffc107; font-weight: bold; font-size: 1.1em;">%{{ risk.tasiyici_olabilirlik }}</span></div>
+                        {% endif %}
+                    </div>
+                    <div class="mt-2">
+                        <small><strong>Ebeveyn Durumu:</strong> Anne: 
+                            {% if risk.ebeveyn_durumu.anne == "Hasta" %}
+                                <span class="badge bg-danger">Hasta</span>
+                            {% elif risk.ebeveyn_durumu.anne == "Taşıyıcı" %}
+                                <span class="badge bg-warning">Taşıyıcı</span>
+                            {% else %}
+                                <span class="badge bg-success">Sağlıklı</span>
+                            {% endif %}
+                            | Baba: 
+                            {% if risk.ebeveyn_durumu.baba == "Hasta" %}
+                                <span class="badge bg-danger">Hasta</span>
+                            {% elif risk.ebeveyn_durumu.baba == "Taşıyıcı" %}
+                                <span class="badge bg-warning">Taşıyıcı</span>
+                            {% else %}
+                                <span class="badge bg-success">Sağlıklı</span>
+                            {% endif %}
+                        </small>
+                    </div>
+                    <div class="alert alert-info mt-2 mb-0" style="font-size: 0.9em;">
+                        <i class="bi bi-info-circle"></i> {{ risk.aciklama }}
+                    </div>
+                </div>
+                    {% endfor %}
+                </div>
+                {% elif kullanici_birey %}
+                <div class="profile-card mb-4" style="border: 3px double #667eea;">
+                    <div class="alert alert-success">
+                        <i class="bi bi-check-circle-fill"></i> <strong>Risk Analizi:</strong> Önceki kuşaklarda kalıtsal hastalık riski tespit edilmedi.
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Soy Ağacı -->
+                {% if soy_agaci %}
+                <div class="profile-card mb-4" style="border: 3px double #667eea;">
+                    <h3 class="text-center mb-4" style="color: #764ba2; font-weight: 700;">
+                        <i class="bi bi-diagram-3-fill"></i> Soy Ağacı
+                    </h3>
+                    <div class="family-tree-container">
+                <div id="familyTree">
+                    <!-- Soy ağacı JavaScript ile oluşturulacak -->
+                </div>
+            </div>
+                {% else %}
+                <div class="profile-card mb-4">
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle"></i> Soy ağacı verisi bulunamadı.
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Hastalık Bilgileri -->
+                {% if risk_analizi or (kullanici_birey and kullanici_birey.hastaliklar and kullanici_birey.hastaliklar != "Sağlıklı") %}
+                <div class="profile-card mb-4" style="border: 3px double #667eea;">
+                    <h3 class="text-center mb-4" style="color: #764ba2; font-weight: 700;">
+                        <i class="bi bi-info-circle-fill"></i> Hastalık Genel Bilgileri
+                    </h3>
+                    <div id="hastalikBilgileri">
+                        <div class="text-center">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Yükleniyor...</span>
+                            </div>
+                            <p class="mt-2 text-muted">Hastalık bilgileri Gemini AI ile hazırlanıyor...</p>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+            </div>
+        </div>
+
+        <!-- Çıkış ve Ana Sayfaya Dön -->
+        <div class="text-center mt-4">
+            <a href="/cikis" class="btn-home" style="background: #dc3545; margin-right: 10px;">
+                <i class="bi bi-box-arrow-right"></i> Çıkış Yap
+            </a>
+            <a href="/" class="btn-home">
+                <i class="bi bi-house-fill"></i> Ana Sayfaya Dön
+            </a>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Soy ağacı verisi
+        const soyAgaci = {{ soy_agaci | tojson if soy_agaci else '[]' }};
+        const kullaniciBireyId = '{{ user.birey_id if user.birey_id else "" }}';
+        const treeContainer = document.getElementById('familyTree');
+
+        // Birey verilerini ID'ye göre indeksle
+        const bireyMap = {};
+        soyAgaci.forEach(birey => {
+            bireyMap[birey.birey_id] = birey;
+        });
+
+        // Bireyin kullanıcıya göre rolünü belirle
+        function getBireyRolu(birey, kullaniciBirey) {
+            if (!kullaniciBirey) return '';
+            
+            // Kullanıcının kendisi
+            if (birey.birey_id === kullaniciBirey.birey_id) {
+                return 'Kendisi';
+            }
+            
+            // Doğrudan ebeveynler
+            if (birey.birey_id === kullaniciBirey.anne_id) {
+                return 'Anne';
+            }
+            if (birey.birey_id === kullaniciBirey.baba_id) {
+                return 'Baba';
+            }
+            
+            // Büyük ebeveynler (anne tarafı)
+            const anne = bireyMap[kullaniciBirey.anne_id];
+            if (anne) {
+                if (birey.birey_id === anne.anne_id) {
+                    return 'Büyük Anne (Anne tarafı)';
+                }
+                if (birey.birey_id === anne.baba_id) {
+                    return 'Büyük Baba (Anne tarafı)';
+                }
+            }
+            
+            // Büyük ebeveynler (baba tarafı)
+            const baba = bireyMap[kullaniciBirey.baba_id];
+            if (baba) {
+                if (birey.birey_id === baba.anne_id) {
+                    return 'Büyük Anne (Baba tarafı)';
+                }
+                if (birey.birey_id === baba.baba_id) {
+                    return 'Büyük Baba (Baba tarafı)';
+                }
+            }
+            
+            // Daha uzak atalar - özyinelemeli kontrol
+            function findAncestorRelation(current, target, depth = 0, path = []) {
+                if (depth > 5) return null; // Maksimum derinlik
+                if (current.birey_id === target.birey_id) {
+                    return path;
+                }
+                
+                if (current.anne_id && bireyMap[current.anne_id]) {
+                    const result = findAncestorRelation(bireyMap[current.anne_id], target, depth + 1, [...path, 'anne']);
+                    if (result) return result;
+                }
+                if (current.baba_id && bireyMap[current.baba_id]) {
+                    const result = findAncestorRelation(bireyMap[current.baba_id], target, depth + 1, [...path, 'baba']);
+                    if (result) return result;
+                }
+                return null;
+            }
+            
+            const relationPath = findAncestorRelation(kullaniciBirey, birey);
+            if (relationPath) {
+                if (relationPath.length === 2) {
+                    if (relationPath[0] === 'anne' && relationPath[1] === 'anne') return 'Büyük Büyük Anne';
+                    if (relationPath[0] === 'anne' && relationPath[1] === 'baba') return 'Büyük Büyük Baba';
+                    if (relationPath[0] === 'baba' && relationPath[1] === 'anne') return 'Büyük Büyük Anne';
+                    if (relationPath[0] === 'baba' && relationPath[1] === 'baba') return 'Büyük Büyük Baba';
+                }
+                if (relationPath.length === 3) {
+                    return 'Büyük Büyük Büyük Dede/Nene';
+                }
+                if (relationPath.length >= 4) {
+                    return 'Ata';
+                }
+            }
+            
+            // Çocuklar ve torunlar - kullanıcının anne_id veya baba_id'si olarak geçen bireyler
+            // (Bu durumda kullanıcı onların çocuğu olur, ama soy ağacında görünmeyebilir)
+            // Şimdilik kuşak numarasına göre tahmin edelim
+            if (birey.kusak > kullaniciBirey.kusak) {
+                const fark = birey.kusak - kullaniciBirey.kusak;
+                if (fark === 1) return 'Çocuk';
+                if (fark === 2) return 'Torun';
+                if (fark >= 3) return 'Torun Çocuğu';
+            }
+            
+            // Rol bulunamadı
+            return '';
+        }
+
+        // Kuşaklara göre gruplanmış soy ağacı görselleştirmesi
+        function renderFamilyTree() {
+            if (soyAgaci.length === 0) {
+                treeContainer.innerHTML = '<p class="text-muted">Soy ağacı verisi bulunamadı.</p>';
+                return;
+            }
+
+            const kullaniciBirey = bireyMap[kullaniciBireyId];
+            
+            // Bireyleri kuşaklara göre grupla
+            const kusaklar = {};
+            soyAgaci.forEach(birey => {
+                const kusak = birey.kusak || 0;
+                if (!kusaklar[kusak]) {
+                    kusaklar[kusak] = [];
+                }
+                kusaklar[kusak].push(birey);
+            });
+
+            // Kuşak numaralarını sırala (büyükten küçüğe - en genden en yaşlıya, 1. kuşak en altta)
+            const kusakNumaralari = Object.keys(kusaklar).map(Number).sort((a, b) => b - a);
+
+            // Kuşak isimleri (Türkçe)
+            const kusakIsimleri = {
+                1: 'Büyük Büyük Büyük Dede/Nene',
+                2: 'Büyük Büyük Dede/Nene',
+                3: 'Büyük Dede/Nene',
+                4: 'Dede/Nene',
+                5: 'Baba/Anne',
+                6: 'Kendisi',
+                7: 'Çocuk',
+                8: 'Torun'
+            };
+
+            // Önce tüm bireyleri render et ve pozisyonlarını kaydet
+            const nodePositions = {};
+            let html = '<div class="tree-wrapper">';
+            html += '<svg class="tree-connections" id="treeConnections"></svg>';
+            
+            kusakNumaralari.forEach(kusak => {
+                const kusakBireyleri = kusaklar[kusak];
+                const kusakAdi = kusakIsimleri[kusak] || `Kuşak ${kusak}`;
+                
+                html += `<div class="generation-level" data-generation="${kusak}">`;
+                
+                kusakBireyleri.forEach((birey, index) => {
+                    const isCurrentUser = birey.birey_id === kullaniciBireyId;
+                    const cardClass = isCurrentUser ? 'node-card current-user' : 'node-card';
+                    const nodeId = `node-${birey.birey_id}`;
+                    
+                    // Rol belirleme
+                    const rolu = getBireyRolu(birey, kullaniciBirey);
+                    
+                    // Hastalık durumu
+                    let hastalikBadges = '';
+                    if (birey.hastaliklar && birey.hastaliklar !== "Sağlıklı") {
+                        birey.hastaliklar.forEach(hastalik => {
+                            if (hastalik.durum === "Hasta") {
+                                hastalikBadges += `<span class="node-badge badge-hasta">${hastalik.hastalik}</span> `;
+                            } else if (hastalik.durum === "Taşıyıcı") {
+                                hastalikBadges += `<span class="node-badge badge-tasiyici">${hastalik.hastalik} (Taşıyıcı)</span> `;
+                            }
+                        });
+                    } else {
+                        hastalikBadges = '<span class="node-badge badge-saglikli">Sağlıklı</span>';
+                    }
+
+                    // Cinsiyet ikonu
+                    const cinsiyetIcon = birey.cinsiyet === "Erkek" 
+                        ? '<i class="bi bi-gender-male text-primary"></i>' 
+                        : '<i class="bi bi-gender-female text-danger"></i>';
+
+                    // Rol HTML'i
+                    const roleHtml = rolu ? '<div class="node-role">' + rolu + '</div>' : '';
+
+                    html += `
+                        <div class="tree-node" id="${nodeId}" data-birey-id="${birey.birey_id}" data-generation="${kusak}" data-index="${index}">
+                            ${roleHtml}
+                            <div class="${cardClass}">
+                                <div class="node-name">
+                                    ${isCurrentUser ? '<i class="bi bi-star-fill text-success"></i> ' : ''}
+                                    ${cinsiyetIcon}
+                                    <strong>${birey.isim} ${birey.soyad}</strong>
+                                </div>
+                                <div class="node-details">
+                                    <div><strong>Cinsiyet:</strong> ${birey.cinsiyet}</div>
+                                    <div><strong>Doğum Yılı:</strong> ${birey.dogum_yili}</div>
+                                    <div class="mt-2" style="min-height: 40px;">${hastalikBadges}</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                html += `</div>`;
+            });
+            
+            html += '</div>';
+            treeContainer.innerHTML = html;
+            
+            // Pozisyonları hesapla ve çizgileri çiz
+            setTimeout(() => {
+                drawConnections(kullaniciBirey);
+            }, 200);
+            
+            // Window resize olduğunda çizgileri yeniden çiz
+            window.addEventListener('resize', () => {
+                setTimeout(() => {
+                    drawConnections(kullaniciBirey);
+                }, 100);
+            });
+        }
+        
+        // İlişki çizgilerini çiz
+        function drawConnections(kullaniciBirey) {
+            const svg = document.getElementById('treeConnections');
+            if (!svg) return;
+            
+            // SVG'i temizle
+            svg.innerHTML = '';
+            
+            // Container'ın boyutlarını al
+            const container = treeContainer.querySelector('.tree-wrapper');
+            if (!container) return;
+            
+            const containerRect = container.getBoundingClientRect();
+            const scrollLeft = container.scrollLeft || 0;
+            const scrollTop = container.scrollTop || 0;
+            
+            svg.setAttribute('width', containerRect.width);
+            svg.setAttribute('height', containerRect.height);
+            
+            // Tüm bireyler için ilişkileri çiz
+            soyAgaci.forEach(birey => {
+                if (!birey.anne_id && !birey.baba_id) return;
+                
+                const childNode = document.querySelector('[data-birey-id="' + birey.birey_id + '"]');
+                if (!childNode) return;
+                
+                const childRect = childNode.getBoundingClientRect();
+                const containerRect = container.getBoundingClientRect();
+                
+                const childX = childRect.left - containerRect.left + childRect.width / 2 + scrollLeft;
+                const childY = childRect.top - containerRect.top + childRect.height / 2 + scrollTop;
+                
+                // Anne çizgisi
+                if (birey.anne_id) {
+                    const anneNode = document.querySelector('[data-birey-id="' + birey.anne_id + '"]');
+                    if (anneNode) {
+                        const anneRect = anneNode.getBoundingClientRect();
+                        const anneX = anneRect.left - containerRect.left + anneRect.width / 2 + scrollLeft;
+                        const anneY = anneRect.top - containerRect.top + anneRect.height / 2 + scrollTop;
+                        
+                        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                        line.setAttribute('x1', String(anneX));
+                        line.setAttribute('y1', String(anneY));
+                        line.setAttribute('x2', String(childX));
+                        line.setAttribute('y2', String(childY));
+                        line.setAttribute('stroke', '#667eea');
+                        line.setAttribute('stroke-width', '2');
+                        line.setAttribute('opacity', '0.6');
+                        svg.appendChild(line);
+                    }
+                }
+                
+                // Baba çizgisi
+                if (birey.baba_id) {
+                    const babaNode = document.querySelector('[data-birey-id="' + birey.baba_id + '"]');
+                    if (babaNode) {
+                        const babaRect = babaNode.getBoundingClientRect();
+                        const babaX = babaRect.left - containerRect.left + babaRect.width / 2 + scrollLeft;
+                        const babaY = babaRect.top - containerRect.top + babaRect.height / 2 + scrollTop;
+                        
+                        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                        line.setAttribute('x1', String(babaX));
+                        line.setAttribute('y1', String(babaY));
+                        line.setAttribute('x2', String(childX));
+                        line.setAttribute('y2', String(childY));
+                        line.setAttribute('stroke', '#667eea');
+                        line.setAttribute('stroke-width', '2');
+                        line.setAttribute('opacity', '0.6');
+                        svg.appendChild(line);
+                    }
+                }
+            });
+        }
+
+        // Sayfa yüklendiğinde soy ağacını göster
+        if (soyAgaci && soyAgaci.length > 0) {
+            renderFamilyTree();
+        }
+
+        // Hastalık bilgilerini Gemini API'den al
+        async function loadDiseaseInfo() {
+            const hastalikBilgileriContainer = document.getElementById('hastalikBilgileri');
+            if (!hastalikBilgileriContainer) return;
+
+            // Risk analizindeki hastalıkları topla
+            const hastaliklar = [];
+            
+            {% if risk_analizi %}
+            {% for risk in risk_analizi %}
+            {% if risk.tasiyici_olabilirlik and risk.tasiyici_olabilirlik > 0 %}
+            {% set durum_text = "Taşıyıcı" %}
+            {% else %}
+            {% set durum_text = "Bilgilendirme" %}
+            {% endif %}
+            hastaliklar.push({
+                hastalik: '{{ risk.hastalik }}',
+                durum: '{{ durum_text }}',
+                kalitim_sekli: '{{ risk.kalitim_sekli }}'
+            });
+            {% endfor %}
+            {% endif %}
+
+            {% if kullanici_birey and kullanici_birey.hastaliklar and kullanici_birey.hastaliklar != "Sağlıklı" %}
+            {% if kullanici_birey.hastaliklar is iterable and kullanici_birey.hastaliklar is not string %}
+            {% for hastalik in kullanici_birey.hastaliklar %}
+            // Bu hastalık zaten risk_analizi'nde varsa ekleme
+            if (!hastaliklar.some(h => h.hastalik === '{{ hastalik.hastalik }}')) {
+                hastaliklar.push({
+                    hastalik: '{{ hastalik.hastalik }}',
+                    durum: '{{ hastalik.durum }}',
+                    kalitim_sekli: 'Çekinik' // Varsayılan, risk_analizi'nden alınabilir
+                });
+            }
+            {% endfor %}
+            {% endif %}
+            {% endif %}
+
+            if (hastaliklar.length === 0) {
+                hastalikBilgileriContainer.innerHTML = `
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> Hastalık bilgisi bulunamadı.
+                    </div>
+                `;
+                return;
+            }
+
+            try {
+                // Tüm hastalıklar için bilgi al
+                const response = await fetch('/api/hastalik-bilgileri', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        hastalik_listesi: hastaliklar
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (data.basarili && data.hastalik_bilgileri && data.hastalik_bilgileri.length > 0) {
+                    let html = '';
+                    
+                    data.hastalik_bilgileri.forEach((hastalikBilgisi, index) => {
+                        if (hastalikBilgisi.basarili) {
+                            const durumBadgeClass = hastalikBilgisi.durum === 'Hasta' 
+                                ? 'bg-danger' 
+                                : (hastalikBilgisi.durum === 'Taşıyıcı' ? 'bg-warning' : 'bg-info');
+                            
+                            html += `
+                                <div class="mb-4 ${index > 0 ? 'mt-4 pt-4 border-top' : ''}">
+                                    <h5 style="color: #764ba2; font-weight: 600;">${hastalikBilgisi.hastalik_adi}</h5>
+                                    <div class="mt-2 mb-3">
+                                        <span class="badge bg-secondary me-2">${hastalikBilgisi.kalitim_sekli}</span>
+                                        <span class="badge ${durumBadgeClass}">${hastalikBilgisi.durum}</span>
+                                    </div>
+                                    <div style="line-height: 1.6; color: #333; text-align: left; font-size: 0.95em;" class="hastalik-bilgi-icerik">
+                                        ${hastalikBilgisi.bilgi_icerigi}
+                                    </div>
+                                </div>
+                            `;
+                        } else {
+                            html += `
+                                <div class="alert alert-warning mb-3">
+                                    <i class="bi bi-exclamation-triangle"></i> ${hastalikBilgisi.hastalik_adi}: ${hastalikBilgisi.bilgi_icerigi}
+                                </div>
+                            `;
+                        }
+                    });
+                    
+                    hastalikBilgileriContainer.innerHTML = html;
+                } else {
+                    hastalikBilgileriContainer.innerHTML = `
+                        <div class="alert alert-warning">
+                            <i class="bi bi-exclamation-triangle"></i> Hastalık bilgileri alınamadı.
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Hastalık bilgisi yüklenirken hata:', error);
+                hastalikBilgileriContainer.innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="bi bi-x-circle"></i> Hastalık bilgisi yüklenirken bir hata oluştu.
+                    </div>
+                `;
+            }
+        }
+
+        // Sayfa yüklendiğinde hastalık bilgilerini yükle
+        if (document.getElementById('hastalikBilgileri')) {
+            loadDiseaseInfo();
+        }
+    </script>
+</body>
+</html>
+

@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kalıtsal Hastalık Takip Sistemi - Giriş</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+        }
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .login-card {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            padding: 40px;
+            max-width: 450px;
+            width: 100%;
+            margin: 0 auto;
+        }
+        .login-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .login-header h1 {
+            color: #667eea;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+        .form-label {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+        }
+        .form-control:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            padding: 12px;
+            font-weight: 600;
+            width: 100%;
+            transition: transform 0.2s;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        .btn-register {
+            background: transparent;
+            border: 2px solid #667eea;
+            color: #667eea;
+            padding: 12px;
+            font-weight: 600;
+            width: 100%;
+            margin-top: 10px;
+            transition: all 0.2s;
+        }
+        .btn-register:hover {
+            background: #667eea;
+            color: white;
+        }
+        .alert {
+            border-radius: 10px;
+            border: none;
+        }
+        .divider {
+            text-align: center;
+            margin: 25px 0;
+            position: relative;
+        }
+        .divider::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            width: 100%;
+            height: 1px;
+            background: #e0e0e0;
+        }
+        .divider span {
+            background: white;
+            padding: 0 15px;
+            position: relative;
+            color: #999;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="login-card">
+            <div class="login-header">
+                <h1>
+                    <i class="bi bi-heart-pulse-fill"></i> Kalıtsal Hastalık Takip Sistemi
+                </h1>
+                <p class="text-muted">Hesabınıza giriş yapın</p>
+            </div>
+            
+            {% if message %}
+            <div class="alert alert-{{ message_type }} alert-dismissible fade show" role="alert">
+                <i class="bi bi-{{ 'check-circle' if message_type == 'success' else 'exclamation-triangle' }}-fill"></i>
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            {% endif %}
+
+            <form method="POST" action="/giris" id="loginForm">
+                <div class="mb-3">
+                    <label for="kurgusal_tc" class="form-label">
+                        <i class="bi bi-credit-card"></i> Kurgusal TC Kimlik No
+                    </label>
+                    <input type="text" class="form-control" id="kurgusal_tc" name="kurgusal_tc" required 
+                           pattern="[0-9]{11}" maxlength="11" placeholder="11 haneli TC kimlik numaranız"
+                           value="{{ request.form.kurgusal_tc if request.form }}">
+                    <small class="form-text text-muted">11 haneli kurgusal TC kimlik numaranızı girin</small>
+                </div>
+
+                <div class="mb-3">
+                    <label for="password" class="form-label">
+                        <i class="bi bi-lock-fill"></i> Şifre
+                    </label>
+                    <input type="password" class="form-control" id="password" name="password" required 
+                           placeholder="Şifrenizi girin">
+                </div>
+
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-box-arrow-in-right"></i> Giriş Yap
+                </button>
+            </form>
+
+            <div class="divider">
+                <span>veya</span>
+            </div>
+
+            <a href="/kayit-ol" class="btn btn-register">
+                <i class="bi bi-person-plus-fill"></i> Kayıt Ol
+            </a>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // TC alanı için sadece rakam girişi
+        document.getElementById('kurgusal_tc').addEventListener('input', function(e) {
+            this.value = this.value.replace(/[^0-9]/g, '');
+        });
+
+        // Form gönderim kontrolü
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            const tc = document.getElementById('kurgusal_tc').value;
+            if (tc.length !== 11) {
+                e.preventDefault();
+                alert('TC kimlik numarası 11 haneli olmalıdır!');
+                return false;
+            }
+        });
+    </script>
+</body>
+</html>

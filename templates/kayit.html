@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kayıt Ol - Kalıtsal Hastalık Takip Sistemi</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px 0;
+        }
+        .registration-card {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            padding: 40px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .form-label {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+        }
+        .form-control:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            padding: 12px 30px;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        .btn-secondary {
+            background: #6c757d;
+            border: none;
+            padding: 12px 30px;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+        .alert {
+            border-radius: 10px;
+            border: none;
+        }
+        .header-title {
+            color: #667eea;
+            font-weight: 700;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        .form-section {
+            margin-bottom: 25px;
+        }
+        .section-title {
+            color: #764ba2;
+            font-weight: 600;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="registration-card">
+            <h1 class="header-title">
+                <i class="bi bi-person-plus-fill"></i> Yeni Kullanıcı Kaydı
+            </h1>
+            
+            {% if message %}
+            <div class="alert alert-{{ message_type }} alert-dismissible fade show" role="alert">
+                <i class="bi bi-{{ 'check-circle' if message_type == 'success' else 'exclamation-triangle' }}-fill"></i>
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            {% endif %}
+
+            <form method="POST" action="/kayit" id="registrationForm">
+                <!-- Kişisel Bilgiler -->
+                <div class="form-section">
+                    <h5 class="section-title">
+                        <i class="bi bi-person-fill"></i> Kişisel Bilgiler
+                    </h5>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="isim" class="form-label">İsim <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="isim" name="isim" required 
+                                   placeholder="Adınızı girin" value="{{ request.form.isim if request.form }}">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="soyad" class="form-label">Soyad <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="soyad" name="soyad" required 
+                                   placeholder="Soyadınızı girin" value="{{ request.form.soyad if request.form }}">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="cinsiyet" class="form-label">Cinsiyet <span class="text-danger">*</span></label>
+                            <select class="form-select" id="cinsiyet" name="cinsiyet" required>
+                                <option value="">Seçiniz</option>
+                                <option value="Erkek" {% if request.form and request.form.cinsiyet == 'Erkek' %}selected{% endif %}>Erkek</option>
+                                <option value="Kadın" {% if request.form and request.form.cinsiyet == 'Kadın' %}selected{% endif %}>Kadın</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="dogum_tarihi" class="form-label">Doğum Tarihi <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control" id="dogum_tarihi" name="dogum_tarihi" required 
+                                   value="{{ request.form.dogum_tarihi if request.form }}">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="kendi_tc" class="form-label">Kurgusal TC Kimlik No (11 haneli) <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="kendi_tc" name="kendi_tc" required 
+                               pattern="[0-9]{11}" maxlength="11" placeholder="12345678901"
+                               value="{{ request.form.kendi_tc if request.form }}">
+                        <small class="form-text text-muted">11 haneli bir sayı girin</small>
+                    </div>
+                </div>
+
+                <!-- Hesap Bilgileri -->
+                <div class="form-section">
+                    <h5 class="section-title">
+                        <i class="bi bi-shield-lock-fill"></i> Hesap Bilgileri
+                    </h5>
+                    <div class="mb-3">
+                        <label for="email" class="form-label">E-posta <span class="text-danger">*</span></label>
+                        <input type="email" class="form-control" id="email" name="email" required 
+                               placeholder="ornek@email.com" value="{{ request.form.email if request.form }}">
+                    </div>
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Şifre <span class="text-danger">*</span></label>
+                        <input type="password" class="form-control" id="password" name="password" required 
+                               placeholder="Güvenli bir şifre girin">
+                    </div>
+                </div>
+
+                <!-- Aile Bilgileri -->
+                <div class="form-section">
+                    <h5 class="section-title">
+                        <i class="bi bi-people-fill"></i> Aile Bilgileri
+                    </h5>
+                    <div class="mb-3">
+                        <label for="ebeveyn_tc" class="form-label">Ebeveyn Kurgusal TC (Opsiyonel)</label>
+                        <input type="text" class="form-control" id="ebeveyn_tc" name="ebeveyn_tc" 
+                               pattern="[0-9]{11}" maxlength="11" placeholder="Mevcut aileye katılmak için ebeveyn TC'sini girin"
+                               value="{{ request.form.ebeveyn_tc if request.form }}">
+                        <small class="form-text text-muted">Boş bırakılırsa yeni bir aile evreni oluşturulur</small>
+                    </div>
+                </div>
+
+                <div class="d-grid gap-2 d-md-flex justify-content-md-between mt-4">
+                    <a href="/" class="btn btn-secondary">
+                        <i class="bi bi-arrow-left"></i> Geri Dön
+                    </a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-person-plus-fill"></i> Kayıt Ol
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // TC alanları için sadece rakam girişi
+        document.getElementById('kendi_tc').addEventListener('input', function(e) {
+            this.value = this.value.replace(/[^0-9]/g, '');
+        });
+        
+        document.getElementById('ebeveyn_tc').addEventListener('input', function(e) {
+            this.value = this.value.replace(/[^0-9]/g, '');
+        });
+
+        // Form gönderim kontrolü
+        document.getElementById('registrationForm').addEventListener('submit', function(e) {
+            const kendi_tc = document.getElementById('kendi_tc').value;
+            if (kendi_tc.length !== 11) {
+                e.preventDefault();
+                alert('Kurgusal TC kimlik numarası 11 haneli olmalıdır!');
+                return false;
+            }
+            
+            const ebeveyn_tc = document.getElementById('ebeveyn_tc').value;
+            if (ebeveyn_tc && ebeveyn_tc.length !== 11) {
+                e.preventDefault();
+                alert('Ebeveyn TC kimlik numarası 11 haneli olmalıdır!');
+                return false;
+            }
+        });
+    </script>
+</body>
+</html>
+
