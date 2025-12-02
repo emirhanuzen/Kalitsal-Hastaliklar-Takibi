@@ -6,7 +6,7 @@ from flask import Flask, render_template, request, redirect, url_for, session
 import sys
 
 from config import JSON_AS_ASCII
-from routes import register_user, test_connection
+from routes import register_user, test_connection, debug_my_children, get_my_children
 from database import SQL_SERVER_CONNECTION_STRING, mongo_db
 
 # Algoritma modülünü kontrol et
@@ -470,6 +470,13 @@ def hastalik_bilgileri():
 # API Route'ları (mevcut)
 app.add_url_rule('/api/register', 'register_user', register_user, methods=['POST'])
 app.add_url_rule('/test-baglanti', 'test_connection', test_connection, methods=['GET'])
+app.add_url_rule(
+    '/api/debug/my-children/<family_tree_id>/<user_birey_id>',
+    'debug_my_children',
+    debug_my_children,
+    methods=['GET']
+)
+app.add_url_rule('/api/get-my-children', 'get_my_children', get_my_children, methods=['GET'])
 
 # Sunucuyu Başlatma Bloğu
 if __name__ == '__main__':

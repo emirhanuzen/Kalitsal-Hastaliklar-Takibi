@@ -4,6 +4,7 @@
 
 import datetime
 import sys
+import random
 
 from genetics.genetics import calculate_allele_frequencies, get_hastalik_detaylari
 from genetics.family_tree import (
@@ -42,15 +43,20 @@ def uret_dinamik_soy_agaci(kullanici_kayit_verisi, hastalik_listesi_sql):
         raise ValueError(f"uret_dinamik_soy_agaci: geçersiz cinsiyet değeri '{kullanici_cinsiyet}'")
 
     yas = datetime.date.today().year - dogum_tarihi_nesnesi.year
+    print(f">>> DEBUG (ureteci): Kullanıcı yaşı hesaplandı: {yas}", file=sys.stderr)
     GERIYE_HEDEF_KUSAK = 1
     ILERIYE_HEDEF_KUSAK = 4
     KULLANICI_KUSAGI = 0
-    
-    if yas > 50:
-        KULLANICI_KUSAGI = 2
-    elif 18 <= yas <= 50:
+
+    # TEST AMAÇLI: Kuşak belirleme mantığı
+    # 18–60 yaş arası kullanıcıları ZORUNLU olarak 3. kuşak (ebeveyn) yap
+    if 18 <= yas <= 60:
         KULLANICI_KUSAGI = 3
+    elif yas > 60:
+        # 60 yaş üstü: 2. kuşak (büyükanne/büyükbaba)
+        KULLANICI_KUSAGI = 2
     else:
+        # 18 yaş altı: 4. kuşak (çocuk/son kuşak)
         KULLANICI_KUSAGI = 4
 
     # 4. Kök kullanıcıyı oluştur
@@ -66,7 +72,10 @@ def uret_dinamik_soy_agaci(kullanici_kayit_verisi, hastalik_listesi_sql):
     kok_birey_id = kok_kullanici["birey_id"]
 
     # 5. Ağacı üret ve genleri aktar
-    agaci_uret_ve_genleri_aktar(kok_birey_id, GERIYE_HEDEF_KUSAK, True)  # Önce ataları üret
+    # Önce ataları üret (geriye doğru)
+    agaci_uret_ve_genleri_aktar(kok_birey_id, GERIYE_HEDEF_KUSAK, True)
+    # Sonra çocukları ve ileri kuşakları üret (ileri doğru)
+    agaci_uret_ve_genleri_aktar(kok_birey_id, ILERIYE_HEDEF_KUSAK, False)
 
     # 6. Kullanıcının genotipini ebeveynlerinden kalıtım yoluyla hesapla
     # (Kullanıcıya doğrudan hastalık atanmaz, sadece genotip hesaplanır)
@@ -115,4 +124,22 @@ def uret_dinamik_soy_agaci(kullanici_kayit_verisi, hastalik_listesi_sql):
     # Kullanıcıya (kök birey) hastalık atanmaz - her zaman "Sağlıklı" görünsün
     son_soy_agaci_listesi = olustur_final_listesi(kullanici_birey_id=kok_birey_id)
 
-    return son_soy_agaci_listesi, kok_birey_id
+    # 9. Kök kullanıcının doğrudan çocuklarının isim + TC bilgilerini çıkar
+    cocuk_bilgileri = []
+    for birey in son_soy_agaci_listesi:
+        anne_id = birey.get("anne_id")
+        baba_id = birey.get("baba_id")
+        if anne_id == kok_birey_id or baba_id == kok_birey_id:
+            tc = birey.get("kurgusal_tc")
+            if tc:
+                ad = birey.get("isim", "") or ""
+                soyad = birey.get("soyad", "") or ""
+                tam_ad = f"{ad} {soyad}".strip() or ad or "İsimsiz Çocuk"
+                cocuk_bilgileri.append({
+                    "isim": tam_ad,
+                    "tc": str(tc)
+                })
+
+    print(f">>> DEBUG (ureteci): Kök kullanıcının {len(cocuk_bilgileri)} çocuğu üretildi.", file=sys.stderr)
+
+    return son_soy_agaci_listesi, kok_birey_id, cocuk_bilgileri

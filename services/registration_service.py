@@ -38,8 +38,31 @@ def register_new_family(data, sql_conn, cursor):
             "cinsiyet": data['cinsiyet']
         }
         try:
-            soy_agaci_dokumani, kok_birey_id = uret_dinamik_soy_agaci(kullanici_kayit_verisi, hastalik_listesi)
+            soy_agaci_dokumani, kok_birey_id, cocuk_bilgileri = uret_dinamik_soy_agaci(
+                kullanici_kayit_verisi, hastalik_listesi
+            )
             print(f">>> DEBUG: Algoritma çalıştı, {len(soy_agaci_dokumani)} birey üretildi.")
+            print(f">>> DEBUG: Kök kullanıcının çocuk bilgileri: {cocuk_bilgileri}")
+
+            # Güvenlik: Aynı birey_id'ye sahip birden fazla kayıt oluşmuşsa,
+            # MongoDB'ye kaydetmeden önce tekilleştir.
+            birey_map = {}
+            for birey in soy_agaci_dokumani:
+                birey_id = birey.get("birey_id")
+                if birey_id is None:
+                    continue
+                # İlk görülen kaydı koru
+                if birey_id not in birey_map:
+                    birey_map[birey_id] = birey
+
+            if len(birey_map) != len(soy_agaci_dokumani):
+                print(
+                    f">>> UYARI: Soy ağacı listesinde {len(soy_agaci_dokumani) - len(birey_map)} adet "
+                    f"mükerrer birey bulundu, MongoDB'ye kaydetmeden önce tekilleştirildi.",
+                    file=sys.stderr,
+                )
+
+            soy_agaci_dokumani = list(birey_map.values())
         except Exception as e:
             print(f"!!! Algoritma çalışma hatası: {e}", file=sys.stderr)
             return {"durum": "hata", "mesaj": f"Soy ağacı üretilirken hata oluştu: {e}"}, 500
@@ -107,7 +130,9 @@ def register_new_family(data, sql_conn, cursor):
             "durum": "basarili",
             "mesaj": "Yeni aile evreni başarıyla oluşturuldu.",
             "FamilyTreeID": mongo_tree_id,
-            "UserID": user_id
+            "UserID": user_id,
+            "BireyID_Mongo": kok_birey_id,
+            "OLUSTURULAN_COCUKLAR": cocuk_bilgileri
         }, 201
 
     except Exception as e:
@@ -146,7 +171,8 @@ def register_existing_family(data, sql_conn, cursor):
         ebeveyn_kaydi = cursor.fetchone()
         print(f">>> DEBUG (Senaryo 2): Ebeveyn arama sorgusu sonucu: {ebeveyn_kaydi}")
         if not ebeveyn_kaydi:
-            return {"durum": "hata", "mesaj": "Girilen Ebeveyn Kurgusal TC'si sistemde bulunamadı."}, 404
+            # Ebeveyn bulunamadı
+            return {"durum": "hata", "mesaj": "Ebeveyn bulunamadı."}, 404
 
         ebeveyn_family_tree_id_str = ebeveyn_kaydi[1]
         ebeveyn_birey_id_mongo = ebeveyn_kaydi[2]
@@ -181,19 +207,28 @@ def register_existing_family(data, sql_conn, cursor):
                 break
 
         if not cocuk_birey:
-            return {"durum": "hata", "mesaj": "Girdiğiniz Kendi Kurgusal TC'niz, belirtilen ebeveynin soy ağacında bulunamadı."}, 404
+            # Girilen TC bu ailede bulunamadı
+            return {"durum": "hata", "mesaj": "Girilen TC bu ailede bulunamadı."}, 404
 
         # 5. İlişkiyi Doğrula
         cocuk_anne_id = cocuk_birey.get("anne_id")
         cocuk_baba_id = cocuk_birey.get("baba_id")
         print(f">>> DEBUG (Senaryo 2): Çocuk Anne ID: {cocuk_anne_id}, Çocuk Baba ID: {cocuk_baba_id}, Ebeveyn Birey ID: {ebeveyn_birey_id_mongo}")
         if cocuk_anne_id != ebeveyn_birey_id_mongo and cocuk_baba_id != ebeveyn_birey_id_mongo:
-            return {"durum": "hata", "mesaj": "Girilen ebeveyn kodu ile kendi kodunuz arasında aile bağı bulunamadı."}, 400
+            # Ebeveyn ile çocuk arasında aile bağı doğrulanamadı
+            return {
+                "durum": "hata",
+                "mesaj": "Girilen ebeveyn ile sizin aranızda aile bağı doğrulanamadı."
+            }, 400
 
         # 6. Bu kimlik daha önce alınmış mı?
         cursor.execute("SELECT UserID FROM Users WHERE BireyID_Mongo = ?", (cocuk_birey["birey_id"],))
         if cursor.fetchone():
-            return {"durum": "hata", "mesaj": "Bu kurgusal kimlik zaten başka bir kullanıcı tarafından alınmış."}, 409
+            # Bu aile üyesi için hesap zaten oluşturulmuş
+            return {
+                "durum": "hata",
+                "mesaj": "Bu aile üyesi için hesap zaten oluşturulmuş."
+            }, 409
 
         # 7. Yeni kullanıcıyı SQL'e kaydet
         print(">>> DEBUG (Senaryo 2): Tüm doğrulamalar başarılı, SQL'e INSERT deneniyor...")
@@ -220,7 +255,8 @@ def register_existing_family(data, sql_conn, cursor):
             "durum": "basarili",
             "mesaj": "Mevcut aile evrenine başarıyla katıldınız.",
             "FamilyTreeID": ebeveyn_family_tree_id_str,
-            "UserID": user_id
+            "UserID": user_id,
+            "BireyID_Mongo": cocuk_birey["birey_id"]
         }, 201
 
     except pyodbc.IntegrityError as e:

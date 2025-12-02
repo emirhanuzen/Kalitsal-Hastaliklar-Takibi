@@ -312,11 +312,30 @@
                     <h3 class="text-center mb-4" style="color: #764ba2; font-weight: 700;">
                         <i class="bi bi-diagram-3-fill"></i> Soy Ağacı
                     </h3>
-                    <div class="family-tree-container">
-                <div id="familyTree">
-                    <!-- Soy ağacı JavaScript ile oluşturulacak -->
+                    <div class="family-tree-container" id="soyAgaciAlani">
+                        <div id="familyTree">
+                            <!-- Soy ağacı JavaScript ile oluşturulacak -->
+                        </div>
+                    </div>
                 </div>
-            </div>
+
+                <!-- GEÇİCİ / DEBUG BÖLÜMÜ: Çocuklarım ve Tahmini Riskleri -->
+                <div id="cocuklarimAlani" class="profile-card mb-4" style="border: 3px dashed #667eea;">
+                    <h3 class="h5 mb-3" style="color:#764ba2;">
+                        Çocuklarım ve Tahmini Riskleri (DEBUG)
+                    </h3>
+                    <p class="text-muted small mb-2">
+                        Bu alan sadece geliştirme / gözlem amaçlıdır. Mevcut kullanıcıya ait
+                        soy ağacı üzerinden tespit edilen çocuklar için tahmini (simüle) risk
+                        bilgileri gösterilir.
+                    </p>
+                    <button id="cocuklarimiGetirBtn" class="btn btn-outline-primary btn-sm">
+                        Çocuklarımı Getir
+                    </button>
+                    <ul id="cocuklarListesi" class="mt-3 list-group">
+                        <!-- JavaScript ile doldurulacak -->
+                    </ul>
+                </div>
                 {% else %}
                 <div class="profile-card mb-4">
                     <div class="alert alert-warning">
@@ -648,6 +667,18 @@
             renderFamilyTree();
         }
 
+        // Kayıt/oturum sonrasında çocuklar endpoint'i için gerekli ID'leri tarayıcıya yaz
+        try {
+            if ({{ 'true' if user.family_tree_id else 'false' }}) {
+                localStorage.setItem('family_tree_id', '{{ user.family_tree_id }}');
+            }
+            if ('{{ user.birey_id }}') {
+                localStorage.setItem('user_birey_id', '{{ user.birey_id }}');
+            }
+        } catch (e) {
+            console.warn('localStorage yazılamadı:', e);
+        }
+
         // Hastalık bilgilerini Gemini API'den al
         async function loadDiseaseInfo() {
             const hastalikBilgileriContainer = document.getElementById('hastalikBilgileri');
@@ -762,6 +793,7 @@
             loadDiseaseInfo();
         }
     </script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
 </html>
 

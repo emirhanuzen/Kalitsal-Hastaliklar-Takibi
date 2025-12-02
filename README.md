@@ -1,87 +1,208 @@
-# Kalitsal-Hastaliklar-Takibi
+## 🧬 KRAP – Kalıtsal Risk Analiz Platformu
 
-Proje, kullanıcıların kayıt olduğu web tabanlı kalıtsal hastalık takip sistemidir. Gerçek soy ağacı verilerine erişimimiz olmadığı için bu prototip modelinde yapay zeka yalnızca sentetik/sahte verilerle kullanıcıya örnek bir soy ağacı oluşturur ve veritabanındaki hastalık profilleri üzerinden istatistiksel risk analizi sunar.
+KRAP (Kalıtsal Risk Analiz Platformu), **kalıtsal hastalık risklerini** analiz etmek için tasarlanmış, hibrit veritabanı (SQL + NoSQL) kullanan bir **web tabanlı Mendel genetiği simülasyonudur**.  
 
-## Kurulum
+Gerçek kişi verisi yerine tamamen **kurgusal (sentetik) soy ağaçları** üretir; ancak bu ağaçlardaki kalıtım, **Mendel kalıtım kuralları** (çekinik, taşıyıcı, X’e bağlı vb.) ile hesaplanır. Yani sistem, hastalıkları rastgele atamak yerine:
 
-### 1. Python Bağımlılıkları
+- Alel frekanslarını hesaplar,
+- Genotip → fenotip dönüşümünü uygular,
+- Kullanıcının kendisi ve ailesi için **olasılıksal risk tahmini** üretir.
 
-Proje klasöründe terminal açıp aşağıdaki komutu çalıştırın:
+
+## 🏗️ Mimarî ve Klasör Yapısı
+
+Platform, modüler ve genişletilebilir bir mimarî ile tasarlanmıştır.
+
+```bash
+KRAP/
+├── run.py                # 🚀 Giriş noktası – Flask uygulamasını başlatır
+└── app/
+    ├── __init__.py       # Flask app factory, config yükleme
+    ├── db.py             # 🗄️ Hibrit veritabanı bağlantıları (SQL Server + MongoDB)
+    ├── validators.py     # ✅ Girdi/doğrulama kuralları
+    │
+    ├── routes/           # 🌐 HTTP & API endpoint'leri
+    │   ├── __init__.py
+    │   ├── auth_routes.py        # Kayıt, giriş, profil, 'My Children' API'leri
+    │   └── health_routes.py      # Sistem sağlık/test endpoint'leri (örn. /test-baglanti)
+    │
+    ├── services/         # 🧠 İş kuralları ve domain mantığı
+    │   ├── __init__.py
+    │   ├── soy_agaci_service.py  # Dinamik soy ağacı üretimi (ata + çocuk tarafı)
+    │   ├── risk_service.py       # Kullanıcı bazlı kalıtsal risk analizi
+    │   └── registration_service.py
+    │         # Senaryo 1: Yeni aile başlat
+    │         # Senaryo 2: Mevcut aileye katıl (Join Family)
+    │
+    ├── genetics/         # 🔬 Mendel genetiği hesaplamaları
+    │   ├── __init__.py
+    │   ├── constants.py  # İsim listeleri, sabitler, genetik parametreler
+    │   ├── genetics.py   # Alel frekansları, genotip üretimi, X-bağlı/çekinik kurallar
+    │   ├── person.py     # Kişi (birey) nesnesi oluşturma
+    │   └── family_tree.py# Soy ağacı üzerinde gen aktarımı (ata → çocuk)
+    │
+    └── templates/        # 🖥️ Flask Jinja2 şablonları (UI)
+        ├── index.html    # Giriş ekranı
+        ├── kayit.html    # Kayıt formu (Senaryo 1 & 2)
+        └── profil.html   # Profil + Soy ağacı + "Çocuklarım" paneli
+```
+
+> Not: Yukarıdaki yapı, projenin **modüler hedef mimarîsini** temsil eder. Bazı dosya adları/konumları refaktör sürecinde yakın gelecekte birebir bu yapıya taşınmaktadır.
+
+
+## 🌟 Çekirdek Özellikler (Senaryolar)
+
+### 1️⃣ Senaryo 1 – Yeni Aile Evreni Başlatma
+
+- Kullanıcı, kendine ait **kurgusal TC**, doğum tarihi, cinsiyet vb. bilgilerle kayıt olur.
+- Sistem, kullanıcının **yaşına göre kuşak konumunu** belirler (ör. 3. kuşak = ebeveyn).
+- Ardından:
+  - Geriye doğru **ata kuşakları** (anne, baba, büyükanne, büyükbaba, vb.),
+  - İleriye doğru **çocuk ve torun kuşakları**
+  - Her birey için **genotip** ve buna bağlı **hastalık durumu** (Sağlıklı / Taşıyıcı / Hasta)
+    üretilir.
+- Tüm soy ağacı, hibrit veritabanı modelinde saklanır:
+  - SQL Server → Kullanıcı hesapları (`Users` tablosu)
+  - MongoDB → Aile ağaçları (`FamilyTrees.agac_verisi` dokümanı)
+
+
+### 2️⃣ Senaryo 2 – Mevcut Aileye Katılma (Join Family)
+
+- Kullanıcı, kayıt olurken:
+  - **Ebeveyn Kurgusal TC** (ebeveyninin kurgusal TC’si),
+  - **Kendi Kurgusal TC** (ağaçta kendisine atanmış kurgusal TC)
+    bilgilerini girer.
+- İş akışı:
+  1. SQL tarafında ebeveyn kullanıcısı bulunur (`FamilyTreeID_Mongo`, `BireyID_Mongo`).
+  2. MongoDB’de aynı `FamilyTreeID_Mongo` ile aile ağacı çekilir.
+  3. `kurgusal_tc == kendi_tc` olan birey, **ağaç içinde** bulunur.
+  4. Ebeveyn ile çocuk arasında **soy bağı doğrulanır**  
+     (`anne_id == parent_uuid` veya `baba_id == parent_uuid`).
+  5. Bu birey için daha önce kullanıcı hesabı açılmış mı kontrol edilir.
+  6. Her şey yolundaysa, yeni kullanıcı SQL’de bu bireye bağlanır:
+     - `FamilyTreeID_Mongo` → ebeveynle aynı ağaç,
+     - `BireyID_Mongo` → ağaçtaki mevcut bireyin UUID’si.
+
+Bu sayede **aynı aile evreni içinde** birden fazla kullanıcı, farklı bireylere karşılık gelerek sistemi birlikte kullanabilir.
+
+
+### 3️⃣ "Çocuklarım" Paneli 👶🧬
+
+Profil sayfasında yer alan **"Çocuklarım ve Tahmini Riskleri (DEBUG)"** alanı sayesinde:
+
+- Kullanıcı, kendi `BireyID_Mongo` ve `FamilyTreeID_Mongo` bilgileri ile:
+  - MongoDB’deki soy ağacından **doğrudan çocuklarını** bulur,
+  - Her çocuk için:
+    - Ad & Soyad
+    - Cinsiyet, doğum yılı
+    - Hastalık durumu (renkli etiketler: Kırmızı = Hasta, Turuncu = Taşıyıcı, Yeşil = Sağlıklı)
+    - Basitleştirilmiş **genetik risk notu** (ör. “Taşıyıcı → kendi çocuklarına %50 aktarım riski”)
+  - Ayrıca çocukların **kurgusal TC**’leri debug amaçlı gösterilir ve tek tıkla kopyalanabilir.
+
+Bu panel, özellikle **Senaryo 2 testleri** için ebeveyn → çocuk geçişlerini kolayca doğrulamak amacıyla tasarlanmıştır.
+
+
+## 🧰 Teknoloji Yığını
+
+- **Dil & Framework**
+  - Python 3.x
+  - Flask (Web framework)
+- **Veritabanları**
+  - Microsoft SQL Server (Kullanıcı hesapları, hastalık master verisi)
+  - MongoDB Atlas (Soy ağaçları, birey dokümanları)
+- **Bağlantı & ORM Benzeri Katmanlar**
+  - PyODBC (`pyodbc`) – SQL Server bağlantısı
+  - PyMongo (`pymongo`) – MongoDB bağlantısı
+- **Güvenlik & Yardımcılar**
+  - `bcrypt` – Şifre hashleme
+  - `validators.py` – Girdi ve iş kuralları doğrulama
+
+
+## 🚀 Kurulum ve Çalıştırma
+
+### 1. Depoyu Klonla
+
+```bash
+git clone https://github.com/<kullanici>/KRAP.git
+cd KRAP
+```
+
+### 2. Sanal Ortam Oluştur ve Aktifleştir (Önerilir)
+
+```bash
+python -m venv venv
+
+# Windows (PowerShell)
+.\venv\Scripts\Activate.ps1
+
+# macOS / Linux
+source venv/bin/activate
+```
+
+### 3. Python Bağımlılıklarını Yükle
 
 ```bash
 pip install -r requirements.txt
 ```
 
-Bu komut şu paketleri yükleyecektir:
-- Flask (Web framework)
-- pyodbc (SQL Server bağlantısı)
-- pymongo (MongoDB bağlantısı)
-- bcrypt (Şifre hashleme)
+Başlıca paketler:
+- Flask
+- pyodbc
+- pymongo
+- bcrypt
 
-### 2. Veritabanı Gereksinimleri
+### 4. Konfigürasyon – `config.py` ⚙️
 
-Projenin çalışması için iki veritabanına ihtiyaç vardır:
+`config.py` dosyasında aşağıdaki alanları kendi ortamınıza göre güncelleyin:
 
-#### MS SQL Server
-- SQL Server'ın kurulu ve çalışır durumda olması gerekir
-- `KRAP_DB` adında bir veritabanı oluşturulmalıdır
-- `Users` ve `Hastaliklar` tabloları oluşturulmalıdır
-- ODBC Driver yüklü olmalıdır (Windows'ta genellikle varsayılan olarak yüklüdür)
+- **SQL Server**
+  - `SQL_SERVER_SUNUCU_ADI` → Örn: `localhost\\SQLEXPRESS`
+  - `SQL_SERVER_VERITABANI_ADI` → Örn: `KRAP_DB`
+- **MongoDB**
+  - `MONGO_CONNECTION_STRING` → MongoDB Atlas connection string’iniz
 
-#### MongoDB
-- MongoDB bağlantı string'i `app.py` dosyasında tanımlanmıştır
-- MongoDB Atlas veya yerel MongoDB kullanılabilir
+Ayrıca:
+- `JSON_AS_ASCII`, `SECRET_KEY` vb. Flask ayarlarını da burada yönetebilirsiniz.
 
-### 3. Projeyi Çalıştırma
+### 5. Veritabanı Gereksinimleri
+
+#### 🗄️ SQL Server
+
+- `KRAP_DB` adında bir veritabanı oluşturun.
+- En azından aşağıdaki tablolar gereklidir:
+  - `Users` (Email, PasswordHash, KurgusalTC, DogumTarihi, Isim, Soyad, FamilyTreeID_Mongo, BireyID_Mongo, …)
+  - `Hastaliklar` (hastalık adı, kalıtım şekli, frekanslar vb.)
+- Uygun bir ODBC Driver yüklü olmalıdır (Windows’ta genelde hazır gelir).
+
+#### 🍃 MongoDB Atlas
+
+- `FamilyTrees` koleksiyonunda her aile için bir doküman tutulur:
+  - `_id` → ObjectId
+  - `agac_verisi` → birey listesi (her birey: `birey_id`, `kurgusal_tc`, `anne_id`, `baba_id`, `hastaliklar`, …)
+
+
+### 6. Uygulamayı Çalıştırma
+
+Projeyi başlatmak için:
 
 ```bash
-python app.py
+python run.py
 ```
 
-Flask uygulaması varsayılan olarak `http://localhost:5000` adresinde çalışacaktır.
+Flask uygulaması varsayılan olarak şu adreste çalışır:
 
-### 4. Veritabanı Bağlantı Ayarları
-
-`config.py` dosyasındaki bağlantı ayarlarını kendi sisteminize göre düzenleyin:
-
-- `SQL_SERVER_SUNUCU_ADI`: SQL Server sunucu adı (varsayılan: `localhost`)
-- `SQL_SERVER_VERITABANI_ADI`: Veritabanı adı (varsayılan: `KRAP_DB`)
-- `MONGO_CONNECTION_STRING`: MongoDB bağlantı string'i
-
-## Proje Yapısı
-
-Proje modüler yapıda düzenlenmiştir:
-
-```
-Kalitsal-Hastaliklar-Takibi-main/
-├── app.py                      # Ana Flask uygulaması
-├── config.py                   # Konfigürasyon ayarları
-├── database.py                 # Veritabanı bağlantıları
-├── routes.py                   # API endpoint'leri
-├── validators.py               # Veri doğrulama fonksiyonları
-├── soy_agaci_ureteci.py       # Ana soy ağacı üretim fonksiyonu
-├── services/
-│   ├── __init__.py
-│   └── registration_service.py # Kayıt işlem mantığı
-└── genetics/
-    ├── __init__.py
-    ├── constants.py            # İsim listeleri ve sabitler
-    ├── genetics.py             # Genetik hesaplamalar
-    ├── person.py               # Kişi oluşturma
-    └── family_tree.py          # Soy ağacı üretimi
+```text
+http://localhost:5000
 ```
 
-### Modül Açıklamaları
 
-- **app.py**: Flask uygulamasını başlatır ve route'ları kaydeder
-- **config.py**: Tüm konfigürasyon ayarları (veritabanı, Flask vb.)
-- **database.py**: MongoDB ve SQL Server bağlantıları, veritabanı yardımcı fonksiyonları
-- **routes.py**: API endpoint tanımları
-- **validators.py**: Kullanıcı verilerinin doğrulanması
-- **services/registration_service.py**: Kayıt işlemlerinin iş mantığı (yeni aile, mevcut aileye katılma)
-- **genetics/**: Genetik simülasyon ve soy ağacı üretimi modülleri
-  - **constants.py**: İsim listeleri
-  - **genetics.py**: Alel frekansları, genotip, fenotip hesaplamaları
-  - **person.py**: Kişi oluşturma fonksiyonları
-  - **family_tree.py**: Soy ağacı oluşturma ve gen aktarımı
-- **soy_agaci_ureteci.py**: Ana soy ağacı üretim fonksiyonu (diğer modülleri kullanır)
+## 🤝 Katkıda Bulunma
+
+Öneri, hata bildirimi veya katkı göndermek isterseniz:
+
+- Issue açabilir,
+- Pull Request gönderebilir,
+- Veya kod içinde `TODO` / `DEBUG` notlarını takip ederek eksik alanları iyileştirebilirsiniz.
+
+KRAP halen **araştırma ve prototip** niteliğinde bir projedir; özellikle genetik modelleme ve risk analizi katmanında yapılacak katkılar, gerçekçi simülasyon kalitesini önemli ölçüde artıracaktır. 🙌
+

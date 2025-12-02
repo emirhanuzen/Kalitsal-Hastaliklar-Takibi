@@ -130,7 +130,8 @@ def agaci_uret_ve_genleri_aktar(birey_id, hedef_kusak, is_ata_uretimi):
 
     # --- ÇOCUK ÜRETİMİ (İleriye Doğru) ---
     else:
-        cocuk_sayisi = random.randint(0, 3)
+        # TEST AMAÇLI: En az 1 çocuk üret (0 yerine 1'den başlat)
+        cocuk_sayisi = random.randint(1, 3)
         for _ in range(cocuk_sayisi):
             cocuk_dogum_yili = mevcut_birey["dogum_yili"] + random.randint(20, 35)
             if cocuk_dogum_yili > datetime.date.today().year:
