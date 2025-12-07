@@ -416,3 +416,20 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+# --- BİZİM PROJE İÇİN ÖZEL EKLEMELER ---
+
+# Python Virtual Environment (Bunu kesinlikle ekle!)
+venv/
+env/
+.env
+
+# Next.js Build Dosyaları (Frontend için)
+.next/
+out/
+build/
+
+# Node Modules (Yukarıda var ama garanti olsun)
+node_modules/
+
+# Mac kullanan arkadaşın varsa çöp dosyalar gelmesin
+.DS_Store
