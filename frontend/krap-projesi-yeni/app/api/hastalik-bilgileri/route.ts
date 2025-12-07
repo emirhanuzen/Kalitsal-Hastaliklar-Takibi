@@ -9,21 +9,21 @@ export async function POST(request: Request) {
     // --- MOCK AI CEVABI ---
     const yapayZekaCevabi = [
       {
-        hastalik_adi: "Kistik Fibrozis",
+        hastalik_adi: "Kistik Fibrozis", // DÜZELTİLDİ: Tutarlı anahtar ismi
         kalitim_sekli: "Otozomal Resesif",
         durum: "Taşıyıcı",
         risk_seviyesi: "Yüksek",
         bilgi_icerigi: "Genetik analizlere göre bu hastalık için taşıyıcı genlere sahipsiniz. Eşinizin de taşıyıcı olması durumunda çocuklarda %25 hastalık riski oluşabilir. Solunum testleri önerilir."
       },
       {
-        hastalik: "Akdeniz Anemisi (Talasemi)",
+        hastalik_adi: "Akdeniz Anemisi (Talasemi)", // DÜZELTİLDİ: 'hastalik' yerine 'hastalik_adi' yapıldı
         kalitim_sekli: "Otozomal Resesif",
         durum: "Sağlıklı",
         risk_seviyesi: "Düşük",
         bilgi_icerigi: "Soy ağacınızdaki taramada bu hastalıkla ilgili riskli bir gene rastlanmamıştır. Ancak bölgesel yatkınlık nedeniyle rutin kan sayımı (Hemogram) yaptırmanız faydalı olabilir."
       },
       {
-        hastalik: "Fenilketonüri", // Yeni bir hastalık ekledik
+        hastalik_adi: "Fenilketonüri", // DÜZELTİLDİ: 'hastalik' yerine 'hastalik_adi' yapıldı
         kalitim_sekli: "Otozomal Resesif",
         durum: "Riskli",
         risk_seviyesi: "Orta",
