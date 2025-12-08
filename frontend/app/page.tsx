@@ -36,7 +36,13 @@ export default function LoginPage() {
       const data = await response.json();
 
       if (response.ok) {
-        localStorage.setItem('currentUser', JSON.stringify(data.user || data.kullanici)); 
+        const userFromApi = data.user || data.kullanici;
+        const storedPhotos = JSON.parse(localStorage.getItem('userPhotos') || '{}');
+        const tcKey = userFromApi?.kurgusal_tc || userFromApi?.kendi_tc;
+        const profilePhoto = tcKey ? storedPhotos[tcKey] : undefined;
+        const userWithPhoto = profilePhoto ? { ...userFromApi, profilePhoto } : userFromApi;
+
+        localStorage.setItem('currentUser', JSON.stringify(userWithPhoto)); 
         //alert('Giriş başarılı! Yönlendiriliyorsunuz...'); // İstersen bunu açabilirsin
         router.push('/profil');
       } else {
@@ -56,8 +62,8 @@ export default function LoginPage() {
       <div className="modern-card animate-fade-in" style={{maxWidth: '450px'}}>
         <div className="login-header">
           <h1 className="header-title">
-            <i className="bi bi-heart-pulse-fill me-2"></i> 
-            Kalıtsal Hastalık Takip
+            <i className="bi bi-heart-pulse-fill me-2 icon-red"></i> 
+            Kalıtsal Risk Analizi Platformu
           </h1>
           <p className="text-muted">Güvenli giriş yapın</p>
         </div>

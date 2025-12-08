@@ -12,6 +12,7 @@ export default function KayitSayfasi() {
     isim: '', soyad: '', cinsiyet: '', dogum_tarihi: '',
     kendi_tc: '', email: '', password: '', ebeveyn_tc: ''
   });
+  const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -20,6 +21,18 @@ export default function KayitSayfasi() {
     } else {
         setFormData(prev => ({ ...prev, [name]: value }));
     }
+  };
+
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      alert('Lütfen bir resim dosyası seçin.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onloadend = () => setProfilePhoto(reader.result as string);
+    reader.readAsDataURL(file);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -40,7 +53,17 @@ export default function KayitSayfasi() {
       const data = await response.json();
 
       if (response.ok) {
-        if (data.user) localStorage.setItem('currentUser', JSON.stringify(data.user));
+        const userFromApi = data.user;
+        const userWithPhoto = profilePhoto ? { ...userFromApi, profilePhoto } : userFromApi;
+
+        // Fotoğrafı TC ile eşleştirip localStorage'da sakla ki girişte geri yüklenebilsin
+        if (profilePhoto && userFromApi?.kurgusal_tc) {
+          const storedPhotos = JSON.parse(localStorage.getItem('userPhotos') || '{}');
+          storedPhotos[userFromApi.kurgusal_tc] = profilePhoto;
+          localStorage.setItem('userPhotos', JSON.stringify(storedPhotos));
+        }
+
+        if (userWithPhoto) localStorage.setItem('currentUser', JSON.stringify(userWithPhoto));
         alert('Kayıt Başarılı! Profilinize yönlendiriliyorsunuz.'); 
         router.push('/profil'); 
       } else {
@@ -91,6 +114,20 @@ export default function KayitSayfasi() {
             <div className="mb-4">
                 <label className="form-label">TC Kimlik No (11 Hane) <span className="text-danger">*</span></label>
                 <input type="text" className="form-control" name="kendi_tc" required maxLength={11} placeholder="11122233344" value={formData.kendi_tc} onChange={handleChange} />
+            </div>
+
+            <div className="mb-4">
+                <label className="form-label">Profil Fotoğrafı (isteğe bağlı)</label>
+                <div className="d-flex align-items-center gap-3">
+                    <div className="avatar-circle preview">
+                        {profilePhoto ? (
+                            <img src={profilePhoto} alt="Profil önizleme" />
+                        ) : (
+                            <span className="avatar-initial">{formData.isim?.[0]?.toUpperCase() || '✚'}</span>
+                        )}
+                    </div>
+                    <input type="file" accept="image/*" className="form-control" onChange={handlePhotoChange} />
+                </div>
             </div>
 
             <h5 className="section-title mt-4 mb-3 text-secondary pb-2 border-bottom">Hesap Bilgileri</h5>

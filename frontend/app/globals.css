@@ -3,34 +3,34 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 :root {
-  /* Renk Paleti */
-  --primary-color: #667eea;
-  --secondary-color: #764ba2;
-  --accent-color: #00d2ff;
-  --text-dark: #2d3748;
-  --text-light: #718096;
+  /* Renk Paleti (lacivert ana, mavi-yeşil ve turkuaz aksanlar) */
+  --primary-color: #0b3c6f;    /* Lacivert */
+  --secondary-color: #0a7ca4;  /* Mavi-yeşil */
+  --accent-color: #0fb36d;     /* Canlı yeşil */
+  --accent-2-color: #1ec3d6;   /* Turkuaz */
+  --text-dark: #1f2937;
+  --text-light: #6b7280;
   
-  /* Kart Ayarları (Arkadaki DNA'yı göstermek için %85 şeffaflık) */
-  --card-bg: rgba(255, 255, 255, 0.85);
-  --glass-border: 1px solid rgba(255, 255, 255, 0.4);
+  /* Kart Ayarları: daha saydam cam efekti */
+  --card-bg: rgba(255, 255, 255, 0.72);
+  --glass-border: 1px solid rgba(255, 255, 255, 0.35);
+  --glass-shadow: 0 20px 50px rgba(11, 60, 111, 0.18);
 }
 
 body {
   /* --- YENİ ARKA PLAN AYARLARI --- */
-  background-color: #764ba2; /* Resim yüklenmezse yedek renk */
+  background-color: #0b3c6f; /* Resim yüklenmezse yedek renk */
   
-  /* 1. Katman: Mor/Mavi Gradyan (Opaklık ayarlarıyla görseli silikleştiriyoruz)
-     2. Katman: Sağ alttan sol üste uzanan yeni DNA Sarmalı Görseli
-  */
+  /* 1. Katman: Lacivert-Mavi gradyan
+     2. Katman: DNA görseli
+     3. Katman: hafif turkuaz ışık lekesi */
   background-image: 
-    linear-gradient(135deg, rgba(102, 126, 234, 0.80) 0%, rgba(118, 75, 162, 0.85) 100%),
+    radial-gradient(35% 45% at 80% 20%, rgba(30, 195, 214, 0.25), transparent 65%),
+    linear-gradient(135deg, rgba(11, 60, 111, 0.9) 0%, rgba(10, 124, 164, 0.86) 100%),
     url('https://images.unsplash.com/photo-1628595351029-c2bf17511435?q=80&w=2070&auto=format&fit=crop');
 
-  /* Resmi ekranı kaplayacak ve ortalayacak şekilde ayarla */
   background-size: cover;
   background-position: center;
-  
-  /* Sayfa kaydırılsa bile arka plan sabit kalsın */
   background-attachment: fixed;
   background-repeat: no-repeat;
 
@@ -63,7 +63,7 @@ body {
   backdrop-filter: blur(12px); /* Kartların arkasını bulanıklaştırır */
   border-radius: 20px;
   border: var(--glass-border);
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--glass-shadow);
   padding: 40px;
   width: 100%;
   transition: transform 0.3s ease, box-shadow 0.3s ease;
@@ -71,12 +71,12 @@ body {
 
 .modern-card:hover {
   transform: translateY(-5px);
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 25px 60px rgba(11, 60, 111, 0.22);
 }
 
 /* --- BAŞLIKLAR --- */
 h1, h2, h3, h4, h5 {
-  color: var(--secondary-color);
+  color: var(--primary-color);
   font-weight: 700;
   letter-spacing: -0.5px;
 }
@@ -84,8 +84,8 @@ h1, h2, h3, h4, h5 {
 .header-title {
   text-align: center;
   margin-bottom: 30px;
-  /* Başlığı da mor gradyan yap */
-  background: -webkit-linear-gradient(45deg, #667eea, #764ba2);
+  /* Başlığı lacivert-turkuaz gradyan yap */
+  background: -webkit-linear-gradient(45deg, var(--primary-color), var(--accent-2-color));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   display: inline-block;
@@ -115,7 +115,7 @@ h1, h2, h3, h4, h5 {
 
 /* --- BUTONLAR --- */
 .btn-primary-custom {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
   border: none;
   padding: 14px;
   font-weight: 600;
@@ -130,6 +130,39 @@ h1, h2, h3, h4, h5 {
   transform: translateY(-2px);
   box-shadow: 0 8px 25px rgba(118, 75, 162, 0.5);
   color: white;
+}
+
+/* --- PROFIL AVATAR --- */
+.avatar-circle {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 700;
+  font-size: 1.25rem;
+  overflow: hidden;
+  box-shadow: 0 6px 20px rgba(118, 75, 162, 0.25);
+}
+
+.avatar-circle img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.avatar-circle .avatar-initial {
+  line-height: 1;
+}
+
+/* Icon rengi override (gradient altında kaybolmasın) */
+.icon-red {
+  color: #e63946 !important;
+  -webkit-text-fill-color: #e63946 !important;
 }
 
 /* --- INFO KARTLARI --- */

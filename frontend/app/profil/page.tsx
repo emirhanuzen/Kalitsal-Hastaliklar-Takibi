@@ -24,7 +24,13 @@ export default function ProfilSayfasi() {
     const savedUserString = localStorage.getItem('currentUser');
     if (savedUserString) {
       const parsedUser = JSON.parse(savedUserString);
-      setUser(parsedUser);
+      // Eğer localStorage:userPhotos içinde daha güncel bir fotoğraf varsa onu bindir
+      const storedPhotos = JSON.parse(localStorage.getItem('userPhotos') || '{}');
+      const tcKey = parsedUser?.kurgusal_tc || parsedUser?.kendi_tc;
+      const mergedUser = tcKey && storedPhotos[tcKey]
+        ? { ...parsedUser, profilePhoto: storedPhotos[tcKey] }
+        : parsedUser;
+      setUser(mergedUser);
     } else {
       router.push('/');
     }
@@ -142,6 +148,32 @@ export default function ProfilSayfasi() {
     return "3px solid #28a745";
   };
 
+  const handlePhotoUpdate = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      alert('Lütfen bir resim dosyası seçin.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const photo = reader.result as string;
+      setUser((prev: any) => {
+        const tcKey = prev?.kurgusal_tc || prev?.kendi_tc;
+        // fotoğraf haritasını güncelle
+        if (tcKey) {
+          const storedPhotos = JSON.parse(localStorage.getItem('userPhotos') || '{}');
+          storedPhotos[tcKey] = photo;
+          localStorage.setItem('userPhotos', JSON.stringify(storedPhotos));
+        }
+        const updated = { ...prev, profilePhoto: photo };
+        localStorage.setItem('currentUser', JSON.stringify(updated));
+        return updated;
+      });
+    };
+    reader.readAsDataURL(file);
+  };
+
   if (!user) return <div className="d-flex justify-content-center align-items-center vh-100"><div className="spinner-border text-primary"></div></div>;
 
   return (
@@ -151,9 +183,22 @@ export default function ProfilSayfasi() {
                 
                 {/* ÜST BİLGİ */}
                 <div className="modern-card animate-fade-in mb-4 d-flex justify-content-between align-items-center">
-                    <div>
-                        <h2 className="mb-0" style={{color: '#764ba2', fontWeight: 700}}>Merhaba, {user.isim}!</h2>
-                        <p className="text-muted mb-0">Genetik analiz panelindesin.</p>
+                    <div className="d-flex align-items-center">
+                        <div className="avatar-circle me-3">
+                            {user.profilePhoto ? (
+                                <img src={user.profilePhoto} alt="Profil fotoğrafı" />
+                            ) : (
+                                <span className="avatar-initial">{user.isim?.[0]?.toUpperCase() || 'K'}</span>
+                            )}
+                        </div>
+                        <div>
+                            <h2 className="mb-0" style={{color: 'var(--primary-color)', fontWeight: 700}}>Merhaba, {user.isim}!</h2>
+                            <p className="text-muted mb-0">Genetik analiz panelindesin.</p>
+                            <label className="btn btn-sm btn-outline-primary mt-2">
+                                <i className="bi bi-camera-fill me-2"></i> Fotoğrafı Güncelle
+                                <input type="file" accept="image/*" className="d-none" onChange={handlePhotoUpdate} />
+                            </label>
+                        </div>
                     </div>
                     <button onClick={() => { localStorage.removeItem('currentUser'); router.push('/'); }} className="btn btn-outline-danger rounded-pill px-4">Çıkış Yap</button>
                 </div>
