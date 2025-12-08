@@ -232,13 +232,33 @@ def olustur_final_listesi(kullanici_birey_id=None):
             continue
         
         # Diğer bireyler için normal fenotip hesaplaması
-        fenotip_listesi = []
+        # Önce tüm hastalıkları hesapla
+        tum_fenotipler = []
         birey_genotipleri = birey.get("genotip", {})
         
         for hastalik_adi, genotype in birey_genotipleri.items():
             fenotip_durum = determine_phenotype(hastalik_adi, genotype, birey["cinsiyet"])
             if fenotip_durum:
-                fenotip_listesi.append({"hastalik": hastalik_adi, "durum": fenotip_durum})
+                tum_fenotipler.append({"hastalik": hastalik_adi, "durum": fenotip_durum})
+        
+        # En fazla 2 hastalık seç: Önce "Hasta" olanları, sonra "Taşıyıcı" olanları
+        # Öncelik: Hasta > Taşıyıcı
+        hasta_listesi = [f for f in tum_fenotipler if f["durum"] == "Hasta"]
+        tasiyici_listesi = [f for f in tum_fenotipler if f["durum"] == "Taşıyıcı"]
+        
+        fenotip_listesi = []
+        # Önce hasta olanları ekle (en fazla 2)
+        if hasta_listesi:
+            # Eğer 2'den fazla hasta varsa, rastgele 2 tanesini seç
+            secilen_hastalar = random.sample(hasta_listesi, min(2, len(hasta_listesi)))
+            fenotip_listesi.extend(secilen_hastalar)
+        
+        # Eğer henüz 2'ye ulaşmadıysak, taşıyıcıları ekle
+        if len(fenotip_listesi) < 2 and tasiyici_listesi:
+            kalan_slot = 2 - len(fenotip_listesi)
+            # Eğer kalan slot sayısından fazla taşıyıcı varsa, rastgele seç
+            secilen_tasiyicilar = random.sample(tasiyici_listesi, min(kalan_slot, len(tasiyici_listesi)))
+            fenotip_listesi.extend(secilen_tasiyicilar)
 
         birey_kopya = birey.copy()
         if "genotip" in birey_kopya:

@@ -54,15 +54,9 @@ def register_user():
     try:
         # Senaryo seçimi: Ebeveyn TC boş mu dolu mu?
         if not validated_data['ebeveyn_tc']:
-            # <<< DÜZELTME: Senaryo 1'in artık hastalık listesine ihtiyacı var >>>
-            hastalik_listesi = get_hastalik_listesi(sql_conn)
-            if not hastalik_listesi:
-                print("!!! HATA: Hastalık listesi SQL'den çekilemedi.")
-                return jsonify({"durum": "hata", "mesaj": "Hastalık listesi veritabanından çekilemedi."}), 500
-
-            result, status_code = register_new_family(validated_data, sql_conn, cursor, mongo_db, hastalik_listesi)
+            result, status_code = register_new_family(validated_data, sql_conn, cursor)
         else:
-            result, status_code = register_existing_family(validated_data, sql_conn, cursor, mongo_db)
+            result, status_code = register_existing_family(validated_data, sql_conn, cursor)
 
         return jsonify(result), status_code
 
