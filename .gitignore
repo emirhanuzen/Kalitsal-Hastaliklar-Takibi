@@ -428,3 +428,18 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+# Python model files
+*.pkl
+*.h5
+*.pth
+*.pt
+
+# IDE files
+.idea/
+*.iml
+
+# Temporary files
+findstr
+appModel.py
+frontend/app/api_bos/

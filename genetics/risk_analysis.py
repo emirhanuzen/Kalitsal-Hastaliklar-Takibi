@@ -7,6 +7,39 @@ from genetics.genetics import get_hastalik_detaylari, determine_phenotype
 
 def calculate_user_risk(soy_agaci_listesi, kullanici_birey_id, kullanici_cinsiyet):
     """
+    Model ile risk analizi yapar. Model yoksa algoritma fallback kullanır.
+    """
+    # Model ile risk analizi yapmayı dene
+    try:
+        from services.local_ai_service import calculate_risk_analysis_with_model
+        
+        hastalik_detaylari = get_hastalik_detaylari()
+        if not hastalik_detaylari:
+            print("!!! UYARI (risk_analysis): Hastalık detayları boş.", file=sys.stderr)
+            return []
+        
+        print(">>> Model ile risk analizi yapılıyor...", file=sys.stderr)
+        model_result = calculate_risk_analysis_with_model(
+            soy_agaci_listesi,
+            kullanici_birey_id,
+            kullanici_cinsiyet,
+            hastalik_detaylari
+        )
+        
+        if model_result:
+            print(f">>> Model risk analizi başarılı: {len(model_result)} risk bulundu.", file=sys.stderr)
+            return model_result
+        else:
+            print(">>> Model sonuç döndürmedi, algoritma fallback kullanılıyor...", file=sys.stderr)
+    except Exception as e:
+        print(f"!!! Model risk analizi hatası: {e}, algoritma fallback kullanılıyor...", file=sys.stderr)
+    
+    # Fallback: Algoritma ile risk analizi
+    return calculate_user_risk_algorithmic(soy_agaci_listesi, kullanici_birey_id, kullanici_cinsiyet)
+
+
+def calculate_user_risk_algorithmic(soy_agaci_listesi, kullanici_birey_id, kullanici_cinsiyet, hastalik_detaylari=None):
+    """
     Kullanıcının önceki kuşaklardaki bireylerden hastalık geçme olasılığını hesaplar.
     Kullanıcının kendisine doğrudan hastalık atanmaz, sadece risk analizi yapılır.
     
@@ -40,7 +73,8 @@ def calculate_user_risk(soy_agaci_listesi, kullanici_birey_id, kullanici_cinsiye
     baba = birey_map.get(baba_id) if baba_id else None
     
     # Hastalık detaylarını al
-    hastalik_detaylari = get_hastalik_detaylari()
+    if hastalik_detaylari is None:
+        hastalik_detaylari = get_hastalik_detaylari()
     if not hastalik_detaylari:
         print("!!! UYARI (risk_analysis): Hastalık detayları boş. calculate_allele_frequencies çağrılmış mı?", file=sys.stderr)
         return []
