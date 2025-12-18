@@ -3,6 +3,7 @@ from flask_cors import CORS
 import pandas as pd  # <-- Eklendi
 import joblib  # <-- Eklendi
 import numpy as np  # <-- Eklendi
+import os
 import sys
 
 from config import JSON_AS_ASCII
@@ -30,15 +31,25 @@ CORS(app, resources={
 # 1. EĞİTİLMİŞ MODELİ YÜKLE (appModel.py'den Kopyalandı)
 # =============================================================================
 print("Model yükleniyor...")
+MODEL_DIR = os.path.dirname(os.path.abspath(__file__))
+MODEL_PATH = os.path.join(MODEL_DIR, "genetik_beyin.pkl")
+
+model = None
+le = None
+train_columns = None
+
 try:
-    paket = joblib.load('genetik_beyin.pkl')
-    model = paket['model']
-    le = paket['encoder']
-    train_columns = paket['columns']  # Eğitimdeki sütun sırası (Çok önemli!)
-    print("Model başarıyla yüklendi!")
+    if os.path.exists(MODEL_PATH):
+        paket = joblib.load(MODEL_PATH)
+        model = paket["model"]
+        le = paket["encoder"]
+        train_columns = paket["columns"]  # Eğitimdeki sütun sırası (Çok önemli!)
+        print("Model başarıyla yüklendi!")
+    else:
+        raise FileNotFoundError(f"Model dosyası bulunamadı: {MODEL_PATH}")
 except Exception as e:
     print(f"HATA: Model yüklenemedi! {e}", file=sys.stderr)
-    print("Lütfen 'genetik_beyin.pkl' dosyasının aynı klasörde olduğundan emin ol.", file=sys.stderr)
+    print("Lütfen 'genetik_beyin.pkl' dosyasının proje kök klasöründe olduğundan emin olun.", file=sys.stderr)
 
 # =============================================================================
 # 2. HASTALIK BİLGİ BANKASI (Eğitimdekiyle Aynı Olmalı) (appModel.py'den Kopyalandı)
@@ -94,6 +105,12 @@ def tekli_durum_cozumle(kisi_hastaliklari, aranan_hastalik):
 @app.route('/tahmin-et', methods=['POST'])
 def tahmin_et():
     try:
+        if model is None or le is None or train_columns is None:
+            return jsonify({
+                "basari": False,
+                "hata": "Model yüklenemedi. Lütfen 'genetik_beyin.pkl' dosyasını backend projesinin kök klasörüne ekleyin."
+            }), 500
+
         # 1. Web sitesinden gelen veriyi al (JSON formatında)
         json_data = request.json
 
