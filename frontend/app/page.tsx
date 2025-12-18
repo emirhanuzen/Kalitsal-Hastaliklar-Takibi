@@ -34,9 +34,12 @@ export default function LoginPage() {
       });
 
       const data = await response.json();
+      
+      // Debug için console'a yazdır
+      console.log('Giriş API Response:', { status: response.status, data });
 
-      if (response.ok) {
-        const userFromApi = data.user || data.kullanici;
+      if (response.ok && data.durum === 'basarili' && data.user) {
+        const userFromApi = data.user;
         const storedPhotos = JSON.parse(localStorage.getItem('userPhotos') || '{}');
         const tcKey = userFromApi?.kurgusal_tc || userFromApi?.kendi_tc;
         const profilePhoto = tcKey ? storedPhotos[tcKey] : undefined;
@@ -46,7 +49,10 @@ export default function LoginPage() {
         //alert('Giriş başarılı! Yönlendiriliyorsunuz...'); // İstersen bunu açabilirsin
         router.push('/profil');
       } else {
-        alert('Giriş Başarısız: ' + (data.mesaj || 'Bilinmeyen hata'));
+        // Backend'ten gelen mesajı göster
+        const hataMesaji = data.mesaj || data.durum || 'Bilinmeyen hata';
+        console.error('Giriş hatası:', hataMesaji);
+        alert('Giriş Başarısız: ' + hataMesaji);
       }
 
     } catch (error) {

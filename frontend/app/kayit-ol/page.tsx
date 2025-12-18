@@ -63,9 +63,9 @@ export default function KayitSayfasi() {
           localStorage.setItem('userPhotos', JSON.stringify(storedPhotos));
         }
 
-        if (userWithPhoto) localStorage.setItem('currentUser', JSON.stringify(userWithPhoto));
-        alert('Kayıt Başarılı! Profilinize yönlendiriliyorsunuz.'); 
-        router.push('/profil'); 
+        // Kayıt başarılı, kullanıcıyı giriş sayfasına yönlendir
+        alert('Kayıt Başarılı! Lütfen giriş yapın.'); 
+        router.push('/'); 
       } else {
         alert('Hata: ' + (data.mesaj || 'Kayıt yapılamadı.'));
       }
