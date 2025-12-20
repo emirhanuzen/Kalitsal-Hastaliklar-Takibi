@@ -1,0 +1,276 @@
+/* app/globals.css - Modern Medical UI + Çapraz DNA Arka Plan */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+:root {
+  /* Renk Paleti (lacivert ana, mavi-yeşil ve turkuaz aksanlar) */
+  --primary-color: #0b3c6f;    /* Lacivert */
+  --secondary-color: #0a7ca4;  /* Mavi-yeşil */
+  --accent-color: #0fb36d;     /* Canlı yeşil */
+  --accent-2-color: #1ec3d6;   /* Turkuaz */
+  --text-dark: #1f2937;
+  --text-light: #6b7280;
+  
+  /* Kart Ayarları: daha saydam cam efekti */
+  --card-bg: rgba(255, 255, 255, 0.72);
+  --glass-border: 1px solid rgba(255, 255, 255, 0.35);
+  --glass-shadow: 0 20px 50px rgba(11, 60, 111, 0.18);
+}
+
+body {
+  /* --- YENİ ARKA PLAN AYARLARI --- */
+  background-color: #0b3c6f; /* Resim yüklenmezse yedek renk */
+  
+  /* 1. Katman: Lacivert-Mavi gradyan
+     2. Katman: DNA görseli
+     3. Katman: hafif turkuaz ışık lekesi */
+  background-image: 
+    radial-gradient(35% 45% at 80% 20%, rgba(30, 195, 214, 0.25), transparent 65%),
+    linear-gradient(135deg, rgba(11, 60, 111, 0.9) 0%, rgba(10, 124, 164, 0.86) 100%),
+    url('https://images.unsplash.com/photo-1628595351029-c2bf17511435?q=80&w=2070&auto=format&fit=crop');
+
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+
+  /* --- TEMEL AYARLAR --- */
+  min-height: 100vh;
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  color: var(--text-dark);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* --- ORTAK ANİMASYONLAR --- */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.8s ease-out forwards;
+}
+
+/* Gecikme sınıfları */
+.delay-1 { animation-delay: 0.2s; }
+.delay-2 { animation-delay: 0.4s; }
+.delay-3 { animation-delay: 0.6s; }
+
+/* --- MODERN KART TASARIMI (Glassmorphism) --- */
+.modern-card {
+  background: var(--card-bg);
+  backdrop-filter: blur(12px); /* Kartların arkasını bulanıklaştırır */
+  border-radius: 20px;
+  border: var(--glass-border);
+  box-shadow: var(--glass-shadow);
+  padding: 40px;
+  width: 100%;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.modern-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 25px 60px rgba(11, 60, 111, 0.22);
+}
+
+/* --- BAŞLIKLAR --- */
+h1, h2, h3, h4, h5 {
+  color: var(--primary-color);
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+
+.header-title {
+  text-align: center;
+  margin-bottom: 30px;
+  /* Başlığı lacivert-turkuaz gradyan yap */
+  background: -webkit-linear-gradient(45deg, var(--primary-color), var(--accent-2-color));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  display: inline-block;
+  width: 100%;
+}
+
+/* --- INPUTLAR --- */
+.form-control, .form-select {
+  border-radius: 10px !important;
+  border: 2px solid #e2e8f0 !important;
+  padding: 12px 15px !important;
+  transition: all 0.3s !important;
+  background-color: rgba(255, 255, 255, 0.8) !important;
+}
+
+.form-control:focus, .form-select:focus {
+  border-color: var(--primary-color) !important;
+  box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.15) !important;
+  background-color: #fff !important;
+}
+
+.form-label {
+  font-weight: 600;
+  color: #4a5568;
+  font-size: 0.95rem;
+}
+
+/* --- BUTONLAR --- */
+.btn-primary-custom {
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+  border: none;
+  padding: 14px;
+  font-weight: 600;
+  border-radius: 12px;
+  color: white;
+  transition: all 0.3s;
+  box-shadow: 0 4px 15px rgba(118, 75, 162, 0.3);
+  width: 100%;
+}
+
+.btn-primary-custom:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(118, 75, 162, 0.5);
+  color: white;
+}
+
+/* --- PROFIL AVATAR --- */
+.avatar-circle {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 700;
+  font-size: 1.25rem;
+  overflow: hidden;
+  box-shadow: 0 6px 20px rgba(118, 75, 162, 0.25);
+}
+
+.avatar-circle img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.avatar-circle .avatar-initial {
+  line-height: 1;
+}
+
+/* Icon rengi override (gradient altında kaybolmasın) */
+.icon-red {
+  color: #e63946 !important;
+  -webkit-text-fill-color: #e63946 !important;
+}
+
+/* --- INFO KARTLARI --- */
+.info-card {
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 15px;
+  padding: 20px;
+  height: 100%;
+  border-left: 5px solid var(--primary-color);
+  transition: all 0.2s;
+}
+
+.info-card:hover {
+  background: #fff;
+  transform: scale(1.02);
+}
+
+.info-label {
+  font-size: 0.80rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-light);
+  font-weight: 600;
+  margin-bottom: 5px;
+}
+
+.info-value {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-dark);
+}
+
+/* --- SOY AĞACI ÖZEL STİLLERİ --- */
+.tree-node-card {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  cursor: default;
+  border: 1px solid rgba(0,0,0,0.05);
+}
+
+.tree-node-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 15px 30px rgba(0,0,0,0.15) !important;
+  z-index: 10;
+}
+
+.generation-row::after {
+  content: '';
+  position: absolute;
+  bottom: -30px;
+  left: 50%;
+  width: 2px;
+  height: 30px;
+  background-color: #cbd5e0;
+  z-index: 0;
+}
+
+.generation-row:last-child::after {
+  display: none;
+}
+
+/* --- GENEL İYİLEŞTİRMELER --- */
+.divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 20px 0;
+}
+.divider::before, .divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid #e2e8f0;
+}
+.divider span {
+  padding: 0 10px;
+  color: #a0aec0;
+  font-size: 0.9em;
+}
+
+.btn-register {
+  display: block;
+  text-align: center;
+  text-decoration: none;
+  padding: 12px;
+  border: 2px solid var(--primary-color);
+  border-radius: 12px;
+  color: var(--primary-color);
+  font-weight: 600;
+  transition: all 0.3s;
+}
+
+.btn-register:hover {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+/* --- YAPAY ZEKA KARTLARI İÇİN KAYMA ANİMASYONU --- */
+
+/* Kartın normal hali */
+.hastalik-item {
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); /* Çok yumuşak bir geçiş ayarı */
+  border-left: 5px solid transparent; /* Sol tarafa gizli bir çizgi ekledik */
+  cursor: default; /* Mouse ile üzerine gelindiğini hissettir */
+}
+
+/* Mouse üzerine gelince olacaklar (:hover) */
+.hastalik-item:hover {
+  transform: translateX(10px); /* İşte o yana kayma hareketi! (10 piksel sağa) */
+  background-color: rgba(255, 255, 255, 1); /* Arka planı tam beyaz yapıp öne çıkaralım */
+  border-left-color: var(--accent-color); /* Sol tarafta mavi bir çizgi parlasın */
+  box-shadow: 0 5px 15px rgba(0,0,0,0.1); /* Hafif bir gölgeyle havaya kalksın */
+}

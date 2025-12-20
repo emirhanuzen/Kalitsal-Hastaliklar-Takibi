@@ -55,25 +55,22 @@ def get_disease_information(hastalik_adi, kalitim_sekli, durum="Taşıyıcı"):
         # Gemini modelini oluştur
         model = genai.GenerativeModel(MODEL_NAME)
         
-        # Prompt oluştur - Kısa ve öz bilgi için
-        prompt = f"""Sen bir genetik hastalık uzmanısın. Aşağıdaki kalıtsal hastalık hakkında kısa ve öz bilgi ver (maksimum 150 kelime).
+        # Prompt oluştur - Sadece 1 cümle genel bilgi için
+        prompt = f"""Sen bir genetik hastalık uzmanısın. Aşağıdaki kalıtsal hastalık hakkında SADECE 1 CÜMLE genel bilgi ver.
 
 Hastalık Adı: {hastalik_adi}
 Kalıtım Şekli: {kalitim_sekli}
 Kullanıcı Durumu: {durum}
 
-Lütfen şu konularda kısa bilgi ver:
-1. Hastalığın kısa tanımı (1-2 cümle)
-2. Temel belirtiler (madde halinde, maksimum 3-4 madde)
-3. {durum} durumu ne anlama gelir ve ne gibi önlemler alınmalı (kısa)
-4. Kalıtım şekli hakkında özet bilgi ({kalitim_sekli})
+Lütfen:
+1. Hastalığın ne olduğunu SADECE 1 CÜMLE ile açıkla
+2. Türkçe, anlaşılır ve profesyonel bir dille yaz
+3. HTML formatı kullanma, sadece düz metin
+4. Maksimum 30 kelime kullan
 
-Bilgileri Türkçe, anlaşılır ve profesyonel bir dille sun. HTML formatında:
-- Başlıklar için <h6> veya <strong> kullan
-- Paragraflar için <p> kullan
-- Listeler için <ul> ve <li> kullan
+Örnek format: "{hastalik_adi}, {kalitim_sekli} kalıtım şekliyle geçen ve [kısa açıklama] ile karakterize edilen bir genetik hastalıktır."
 
-Çok kısa ve öz tut. Maksimum 150 kelime kullan. Yanıtını JSON formatında verme, doğrudan HTML içerik olarak ver."""
+Sadece 1 cümle yaz, başka hiçbir şey ekleme."""
 
         # API çağrısı yap (rate limiting ile)
         _last_api_call_time = time.time()

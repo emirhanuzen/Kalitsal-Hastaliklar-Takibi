@@ -54,15 +54,9 @@ def register_user():
     try:
         # Senaryo seçimi: Ebeveyn TC boş mu dolu mu?
         if not validated_data['ebeveyn_tc']:
-            # <<< DÜZELTME: Senaryo 1'in artık hastalık listesine ihtiyacı var >>>
-            hastalik_listesi = get_hastalik_listesi(sql_conn)
-            if not hastalik_listesi:
-                print("!!! HATA: Hastalık listesi SQL'den çekilemedi.")
-                return jsonify({"durum": "hata", "mesaj": "Hastalık listesi veritabanından çekilemedi."}), 500
-
-            result, status_code = register_new_family(validated_data, sql_conn, cursor, mongo_db, hastalik_listesi)
+            result, status_code = register_new_family(validated_data, sql_conn, cursor)
         else:
-            result, status_code = register_existing_family(validated_data, sql_conn, cursor, mongo_db)
+            result, status_code = register_existing_family(validated_data, sql_conn, cursor)
 
         return jsonify(result), status_code
 
@@ -241,21 +235,51 @@ def get_my_children():
                 hastaliklar = birey.get("hastaliklar")
                 risk_analizi = "Genetik risk bilgisi bulunamadı."
 
-                # Hastalık durumuna göre basit risk metni üret
+                # Model ile detaylı risk analizi üret
                 try:
+                    from services.local_ai_service import get_disease_information
+                    
                     if isinstance(hastaliklar, str):
                         if hastaliklar == "Sağlıklı":
                             risk_analizi = "Risk: Düşük. Bilinen kalıtsal hastalık saptanmadı."
                         else:
                             risk_analizi = f"Risk: Orta. {hastaliklar} ile ilişkili genetik risk olabilir."
                     elif isinstance(hastaliklar, list) and hastaliklar:
-                        durumlar = [h.get("durum") for h in hastaliklar if isinstance(h, dict)]
-                        if any(d == "Hasta" for d in durumlar):
-                            risk_analizi = "Risk: Yüksek. Çocuğunuzda kalıtsal hastalık mevcut, üst kuşaklara geçiş ihtimali artmıştır."
-                        elif any(d == "Taşıyıcı" for d in durumlar):
-                            risk_analizi = "Risk: Orta. Çocuğunuz taşıyıcı, kendi çocuklarına hastalığı %50 civarında aktarma ihtimali vardır."
+                        # İlk hastalık için model ile detaylı açıklama üret
+                        ilk_hastalik = hastaliklar[0] if isinstance(hastaliklar[0], dict) else None
+                        if ilk_hastalik:
+                            hastalik_adi = ilk_hastalik.get("hastalik", "")
+                            durum = ilk_hastalik.get("durum", "Taşıyıcı")
+                            kalitim_sekli = ilk_hastalik.get("kalitim_sekli", "Çekinik")
+                            
+                            # Risk seviyesi belirleme
+                            durumlar = [h.get("durum") for h in hastaliklar if isinstance(h, dict)]
+                            if any(d == "Hasta" for d in durumlar):
+                                risk_seviyesi = "Yüksek"
+                                tasiyici_olabilirlik = 75
+                            elif any(d == "Taşıyıcı" for d in durumlar):
+                                risk_seviyesi = "Orta"
+                                tasiyici_olabilirlik = 50
+                            else:
+                                risk_seviyesi = "Düşük"
+                                tasiyici_olabilirlik = 25
+                            
+                            # Risk seviyesine göre kısa ve net mesaj
+                            if any(d == "Hasta" for d in durumlar):
+                                risk_analizi = f"⚠️ {hastalik_adi} riski tespit edildi. Çocuğunuzun durumu için mutlaka bir genetik uzmanına başvurmanız ve gerekli testleri yaptırmanız önerilir."
+                            elif any(d == "Taşıyıcı" for d in durumlar):
+                                risk_analizi = f"ℹ️ {hastalik_adi} taşıyıcılığı tespit edildi. Çocuğunuzun genetik durumunu netleştirmek için bir genetik danışmana başvurmanız faydalı olacaktır."
+                            else:
+                                risk_analizi = f"ℹ️ {hastalik_adi} için düşük risk tespit edildi. Detaylı bilgi için genetik danışmanlık almanız önerilir."
                         else:
-                            risk_analizi = "Risk: Düşük. Ciddi bir kalıtsal hastalık bulgusu saptanmadı."
+                            # Fallback
+                            durumlar = [h.get("durum") for h in hastaliklar if isinstance(h, dict)]
+                            if any(d == "Hasta" for d in durumlar):
+                                risk_analizi = "Risk: Yüksek. Çocuğunuzda kalıtsal hastalık mevcut, üst kuşaklara geçiş ihtimali artmıştır."
+                            elif any(d == "Taşıyıcı" for d in durumlar):
+                                risk_analizi = "Risk: Orta. Çocuğunuz taşıyıcı, kendi çocuklarına hastalığı %50 civarında aktarma ihtimali vardır."
+                            else:
+                                risk_analizi = "Risk: Düşük. Ciddi bir kalıtsal hastalık bulgusu saptanmadı."
                 except Exception as risk_err:
                     print(f">>> DEBUG: risk_analizi hesaplanırken hata: {risk_err}", file=sys.stderr)
 

@@ -343,6 +343,18 @@ paket-files/
 **/__pycache__/
 *.pyc
 
+# Next.js
+.next/
+out/
+frontend/.next/
+frontend/out/
+frontend/node_modules/
+
+# Environment variables
+.env
+.env.local
+.env*.local
+
 # Cake - Uncomment if you are using it
 #tools/**
 #!tools/packages.config
@@ -416,6 +428,7 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+HEAD
 # --- BİZİM PROJE İÇİN ÖZEL EKLEMELER ---
 
 # Python Virtual Environment (Bunu kesinlikle ekle!)
@@ -433,3 +446,20 @@ node_modules/
 
 # Mac kullanan arkadaşın varsa çöp dosyalar gelmesin
 .DS_Store
+
+
+# Python model files
+*.pkl
+*.h5
+*.pth
+*.pt
+
+# IDE files
+.idea/
+*.iml
+
+# Temporary files
+findstr
+appModel.py
+frontend/app/api_bos/
+806b190a209f982ef622e9a21c4fa07a5134c829
