@@ -2,39 +2,91 @@
 # Kullanıcı için risk analizi fonksiyonları
 
 import sys
+import os
+import pandas as pd
+import joblib
 from genetics.genetics import get_hastalik_detaylari, determine_phenotype
+from services.local_ai_service import get_recommended_department
+
+# Model yükleme cache'i
+_model_cache = {'model': None, 'le': None, 'train_columns': None, 'loaded': False}
+
+def _load_model():
+    """Model'i yükle (cache'lenmiş)"""
+    global _model_cache
+    if _model_cache['loaded']:
+        return _model_cache['model'], _model_cache['le'], _model_cache['train_columns']
+    
+    try:
+        # app.py ile aynı dizinde model dosyasını bul
+        current_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        model_path = os.path.join(current_dir, "genetik_beyin.pkl")
+        
+        if os.path.exists(model_path):
+            paket = joblib.load(model_path)
+            _model_cache['model'] = paket["model"]
+            _model_cache['le'] = paket["encoder"]
+            _model_cache['train_columns'] = paket["columns"]
+            _model_cache['loaded'] = True
+            print(">>> DEBUG (risk_analysis): Model başarıyla yüklendi!", file=sys.stderr)
+            return _model_cache['model'], _model_cache['le'], _model_cache['train_columns']
+        else:
+            print(f">>> DEBUG (risk_analysis): Model dosyası bulunamadı: {model_path}", file=sys.stderr)
+            return None, None, None
+    except Exception as e:
+        print(f">>> DEBUG (risk_analysis): Model yükleme hatası: {e}", file=sys.stderr)
+        return None, None, None
+
+def _tekli_durum_cozumle(kisi_hastaliklari, aranan_hastalik):
+    """Gelen listede (örn: ['Hemofili A (Taşıyıcı)']) aranan hastalık var mı?"""
+    if not kisi_hastaliklari: 
+        return "Sağlam"
+    
+    if isinstance(kisi_hastaliklari, list):
+        for h in kisi_hastaliklari:
+            if isinstance(h, dict):
+                h_temiz = h.get("hastalik", "").split(' (')[0].strip()
+                if h_temiz == aranan_hastalik:
+                    durum = h.get("durum", "")
+                    # Model eğitiminde "Hasta" veya "Taşıyıcı" durumları risk olarak kabul ediliyor
+                    if durum in ["Hasta", "Taşıyıcı"]:
+                        return "Hasta"
+                    return "Sağlam"
+            elif isinstance(h, str):
+                h_temiz = h.split(' (')[0].strip()
+                if h_temiz == aranan_hastalik:
+                    return "Hasta"
+    return "Sağlam"
+
+# Hastalık bilgi bankası (app.py'dekiyle aynı olmalı)
+DISEASES = {
+    'Akdeniz Anemisi': {'Type': 'Autosomal', 'Mode': 'Recessive'},
+    'Kistik Fibrozis': {'Type': 'Autosomal', 'Mode': 'Recessive'},
+    'SMA': {'Type': 'Autosomal', 'Mode': 'Recessive'},
+    'Orak Hücreli Anemi': {'Type': 'Autosomal', 'Mode': 'Recessive'},
+    'Fenilketonüri (PKU)': {'Type': 'Autosomal', 'Mode': 'Recessive'},
+    'Tay-Sachs': {'Type': 'Autosomal', 'Mode': 'Recessive'},
+    'Albinizm': {'Type': 'Autosomal', 'Mode': 'Recessive'},
+    'Galaktozemi': {'Type': 'Autosomal', 'Mode': 'Recessive'},
+    'Wilson Hastalığı': {'Type': 'Autosomal', 'Mode': 'Recessive'},
+    'Ailevi Akdeniz Ateşi': {'Type': 'Autosomal', 'Mode': 'Recessive'},
+    'Hemofili A': {'Type': 'X-Linked', 'Mode': 'Recessive'},
+    'Hemofili B': {'Type': 'X-Linked', 'Mode': 'Recessive'},
+    'Renk Körlüğü': {'Type': 'X-Linked', 'Mode': 'Recessive'},
+    'Duchenne MD': {'Type': 'X-Linked', 'Mode': 'Recessive'},
+    'G6PD Eksikliği': {'Type': 'X-Linked', 'Mode': 'Recessive'},
+    'Huntington': {'Type': 'Autosomal', 'Mode': 'Dominant'},
+    'Marfan Sendromu': {'Type': 'Autosomal', 'Mode': 'Dominant'},
+    'Akondroplazi': {'Type': 'Autosomal', 'Mode': 'Dominant'},
+    'Polikistik Böbrek': {'Type': 'Autosomal', 'Mode': 'Dominant'},
+    'Nörofibromatozis': {'Type': 'Autosomal', 'Mode': 'Dominant'}
+}
 
 
 def calculate_user_risk(soy_agaci_listesi, kullanici_birey_id, kullanici_cinsiyet):
     """
-    Model ile risk analizi yapar. Model yoksa algoritma fallback kullanır.
+    Algoritma ile risk analizi yapar.
     """
-    # Model ile risk analizi yapmayı dene
-    try:
-        from services.local_ai_service import calculate_risk_analysis_with_model
-        
-        hastalik_detaylari = get_hastalik_detaylari()
-        if not hastalik_detaylari:
-            print("!!! UYARI (risk_analysis): Hastalık detayları boş.", file=sys.stderr)
-            return []
-        
-        print(">>> Model ile risk analizi yapılıyor...", file=sys.stderr)
-        model_result = calculate_risk_analysis_with_model(
-            soy_agaci_listesi,
-            kullanici_birey_id,
-            kullanici_cinsiyet,
-            hastalik_detaylari
-        )
-        
-        if model_result:
-            print(f">>> Model risk analizi başarılı: {len(model_result)} risk bulundu.", file=sys.stderr)
-            return model_result
-        else:
-            print(">>> Model sonuç döndürmedi, algoritma fallback kullanılıyor...", file=sys.stderr)
-    except Exception as e:
-        print(f"!!! Model risk analizi hatası: {e}, algoritma fallback kullanılıyor...", file=sys.stderr)
-    
-    # Fallback: Algoritma ile risk analizi
     return calculate_user_risk_algorithmic(soy_agaci_listesi, kullanici_birey_id, kullanici_cinsiyet)
 
 
@@ -88,13 +140,18 @@ def calculate_user_risk_algorithmic(soy_agaci_listesi, kullanici_birey_id, kulla
         sekil = details['sekil']
         oran = details.get('oran', 0)
         
+        # Önerilen bölümü belirle
+        onerilen_bolum = get_recommended_department(hastalik_adi)
+        print(f">>> DEBUG (risk_analysis): Hastalık: {hastalik_adi}, Önerilen Bölüm: {onerilen_bolum}", file=sys.stderr)
+        
         risk_bilgisi = {
             'hastalik': hastalik_adi,
             'kalitim_sekli': sekil,
             'risk_seviyesi': 'Düşük',
             'risk_yuzdesi': 0,
             'aciklama': '',
-            'ebeveyn_durumu': {}
+            'ebeveyn_durumu': {},
+            'onerilen_bolum': onerilen_bolum
         }
         
         # Ebeveyn durumlarını kontrol et
@@ -102,6 +159,12 @@ def calculate_user_risk_algorithmic(soy_agaci_listesi, kullanici_birey_id, kulla
         baba_durumu = None
         anne_ismi = None
         baba_ismi = None
+        
+        # Dede/Nine bilgilerini de al (model için gerekli)
+        anne_dede_durumu = None
+        anne_nine_durumu = None
+        baba_dede_durumu = None
+        baba_nine_durumu = None
         
         if anne:
             anne_ismi = f"{anne.get('isim', 'Bilinmeyen')} {anne.get('soyad', '')}".strip()
@@ -111,6 +174,30 @@ def calculate_user_risk_algorithmic(soy_agaci_listesi, kullanici_birey_id, kulla
                     if h.get("hastalik") == hastalik_adi:
                         anne_durumu = h.get("durum")
                         break
+            
+            # Anne tarafı dede/nine
+            anne_anne_id = str(anne.get("anne_id", "")) if anne.get("anne_id") else None
+            anne_baba_id = str(anne.get("baba_id", "")) if anne.get("baba_id") else None
+            
+            if anne_anne_id:
+                anne_nine_birey = birey_map.get(anne_anne_id)
+                if anne_nine_birey:
+                    nine_hastaliklar = anne_nine_birey.get("hastaliklar", "Sağlıklı")
+                    if nine_hastaliklar != "Sağlıklı" and isinstance(nine_hastaliklar, list):
+                        for h in nine_hastaliklar:
+                            if h.get("hastalik") == hastalik_adi:
+                                anne_nine_durumu = h.get("durum")
+                                break
+            
+            if anne_baba_id:
+                anne_dede_birey = birey_map.get(anne_baba_id)
+                if anne_dede_birey:
+                    dede_hastaliklar = anne_dede_birey.get("hastaliklar", "Sağlıklı")
+                    if dede_hastaliklar != "Sağlıklı" and isinstance(dede_hastaliklar, list):
+                        for h in dede_hastaliklar:
+                            if h.get("hastalik") == hastalik_adi:
+                                anne_dede_durumu = h.get("durum")
+                                break
         
         if baba:
             baba_ismi = f"{baba.get('isim', 'Bilinmeyen')} {baba.get('soyad', '')}".strip()
@@ -120,6 +207,30 @@ def calculate_user_risk_algorithmic(soy_agaci_listesi, kullanici_birey_id, kulla
                     if h.get("hastalik") == hastalik_adi:
                         baba_durumu = h.get("durum")
                         break
+            
+            # Baba tarafı dede/nine
+            baba_anne_id = str(baba.get("anne_id", "")) if baba.get("anne_id") else None
+            baba_baba_id = str(baba.get("baba_id", "")) if baba.get("baba_id") else None
+            
+            if baba_anne_id:
+                baba_nine_birey = birey_map.get(baba_anne_id)
+                if baba_nine_birey:
+                    nine_hastaliklar = baba_nine_birey.get("hastaliklar", "Sağlıklı")
+                    if nine_hastaliklar != "Sağlıklı" and isinstance(nine_hastaliklar, list):
+                        for h in nine_hastaliklar:
+                            if h.get("hastalik") == hastalik_adi:
+                                baba_nine_durumu = h.get("durum")
+                                break
+            
+            if baba_baba_id:
+                baba_dede_birey = birey_map.get(baba_baba_id)
+                if baba_dede_birey:
+                    dede_hastaliklar = baba_dede_birey.get("hastaliklar", "Sağlıklı")
+                    if dede_hastaliklar != "Sağlıklı" and isinstance(dede_hastaliklar, list):
+                        for h in dede_hastaliklar:
+                            if h.get("hastalik") == hastalik_adi:
+                                baba_dede_durumu = h.get("durum")
+                                break
         
         risk_bilgisi['ebeveyn_durumu'] = {
             'anne': anne_durumu if anne_durumu else 'Sağlıklı',
@@ -137,88 +248,170 @@ def calculate_user_risk_algorithmic(soy_agaci_listesi, kullanici_birey_id, kulla
         if kaynak_listesi:
             gecis_kaynagi = ", ".join(kaynak_listesi)
         
-        # Risk hesaplama
-        if sekil == 'Çekinik':
-            # Otozomal çekinik kalıtım
-            anne_hasta = anne_durumu == "Hasta"
-            anne_tasiyici = anne_durumu == "Taşıyıcı"
-            baba_hasta = baba_durumu == "Hasta"
-            baba_tasiyici = baba_durumu == "Taşıyıcı"
-            
-            if anne_hasta and baba_hasta:
-                # Her ikisi de hasta ise çocuk kesinlikle taşıyıcı
-                risk_yuzdesi = 0  # Hastalık görülme olasılığı gösterilmez
-                risk_bilgisi['risk_seviyesi'] = 'Çok Yüksek'
-                risk_bilgisi['aciklama'] = 'Her iki ebeveyn de hasta. Kesinlikle taşıyıcısınız (%100).'
-                risk_bilgisi['tasiyici_olabilirlik'] = 100
-            elif (anne_hasta and baba_tasiyici) or (anne_tasiyici and baba_hasta):
-                risk_yuzdesi = 0  # Hastalık görülme olasılığı gösterilmez
-                risk_bilgisi['risk_seviyesi'] = 'Yüksek'
-                risk_bilgisi['aciklama'] = 'Bir ebeveyn hasta, diğeri taşıyıcı. Taşıyıcı olma olasılığınız %50.'
-                risk_bilgisi['tasiyici_olabilirlik'] = 50
-            elif anne_hasta or baba_hasta:
-                risk_yuzdesi = 0
-                risk_bilgisi['risk_seviyesi'] = 'Orta'
-                risk_bilgisi['aciklama'] = 'Bir ebeveyn hasta. Kesinlikle taşıyıcısınız (%100).'
-                risk_bilgisi['tasiyici_olabilirlik'] = 100
-            elif anne_tasiyici and baba_tasiyici:
-                risk_yuzdesi = 0  # Hastalık görülme olasılığı gösterilmez
-                risk_bilgisi['risk_seviyesi'] = 'Orta'
-                risk_bilgisi['aciklama'] = 'Her iki ebeveyn de taşıyıcı. Taşıyıcı olma olasılığınız %50.'
-                risk_bilgisi['tasiyici_olabilirlik'] = 50
-            elif anne_tasiyici or baba_tasiyici:
-                risk_yuzdesi = 0
-                risk_bilgisi['risk_seviyesi'] = 'Düşük'
-                risk_bilgisi['aciklama'] = 'Bir ebeveyn taşıyıcı. Taşıyıcı olma olasılığınız %50.'
-                risk_bilgisi['tasiyici_olabilirlik'] = 50
-            else:
-                risk_yuzdesi = 0
-                risk_bilgisi['risk_seviyesi'] = 'Çok Düşük'
-                risk_bilgisi['aciklama'] = 'Ebeveynlerde hastalık belirtisi yok. Taşıyıcı olma riski düşük.'
-                risk_bilgisi['tasiyici_olabilirlik'] = 0
+        # MODEL İLE RİSK ANALİZİ
+        model_tahmin = None
+        model_olasilik = None
+        model_risk_seviyesi = None
+        model_var_mi = False
+        
+        # Model ile tahmin yap (eğer hastalık mapping'de varsa)
+        if hastalik_adi in DISEASES:
+            model, le, train_columns = _load_model()
+            if model and le and train_columns:
+                try:
+                    info = DISEASES[hastalik_adi]
+                    
+                    # Model için veri hazırla - durumları "Hasta" veya "Sağlam" olarak çevir
+                    def durum_cevir(durum):
+                        """Durumu model formatına çevir: Hasta/Taşıyıcı -> Hasta, diğerleri -> Sağlam"""
+                        if durum and durum in ["Hasta", "Taşıyıcı"]:
+                            return "Hasta"
+                        return "Sağlam"
+                    
+                    veri = {
+                        'Hastalık_Tipi': [info['Type']],
+                        'Kalıtım_Modeli': [info['Mode']],
+                        'Anne_Dede': [durum_cevir(anne_dede_durumu)],
+                        'Anne_Nine': [durum_cevir(anne_nine_durumu)],
+                        'Baba_Dede': [durum_cevir(baba_dede_durumu)],
+                        'Baba_Nine': [durum_cevir(baba_nine_durumu)],
+                        'Anne': [durum_cevir(anne_durumu)],
+                        'Baba': [durum_cevir(baba_durumu)],
+                        'Cocuk_Cinsiyet': [kullanici_cinsiyet]
+                    }
+                    
+                    # DataFrame oluştur
+                    input_df = pd.DataFrame(veri)
+                    input_df = pd.get_dummies(input_df)
+                    input_df = input_df.reindex(columns=train_columns, fill_value=0)
+                    
+                    # Tahmin yap
+                    tahmin_idx = model.predict(input_df)[0]
+                    model_tahmin = le.inverse_transform([tahmin_idx])[0]
+                    
+                    # Olasılık (Güven Oranı)
+                    probs = model.predict_proba(input_df)[0]
+                    model_olasilik = max(probs) * 100
+                    
+                    # Model çıktısına göre risk seviyesi belirle
+                    if model_tahmin == 'Hasta':
+                        if model_olasilik >= 80:
+                            model_risk_seviyesi = 'Çok Yüksek'
+                        elif model_olasilik >= 60:
+                            model_risk_seviyesi = 'Yüksek'
+                        else:
+                            model_risk_seviyesi = 'Orta'
+                    elif model_tahmin == 'Taşıyıcı':
+                        if model_olasilik >= 70:
+                            model_risk_seviyesi = 'Yüksek'
+                        elif model_olasilik >= 50:
+                            model_risk_seviyesi = 'Orta'
+                        else:
+                            model_risk_seviyesi = 'Düşük'
+                    else:  # Sağlam
+                        model_risk_seviyesi = 'Çok Düşük'
+                    
+                    print(f">>> DEBUG (risk_analysis): Model tahmin: {hastalik_adi} -> {model_tahmin}, Olasılık: %{model_olasilik:.1f}, Risk: {model_risk_seviyesi}", file=sys.stderr)
+                    model_var_mi = True
+                except Exception as e:
+                    print(f">>> DEBUG (risk_analysis): Model tahmin hatası: {e}", file=sys.stderr)
+                    import traceback
+                    traceback.print_exc()
+        
+        # Risk hesaplama (Model varsa model kullan, yoksa algoritma)
+        if not model_var_mi:
+            if sekil == 'Çekinik':
+                # Otozomal çekinik kalıtım
+                anne_hasta = anne_durumu == "Hasta"
+                anne_tasiyici = anne_durumu == "Taşıyıcı"
+                baba_hasta = baba_durumu == "Hasta"
+                baba_tasiyici = baba_durumu == "Taşıyıcı"
                 
-        elif sekil == 'X-Bağlı Çekinik':
-            # X-bağlı çekinik kalıtım (cinsiyete bağlı)
-            if kullanici_cinsiyet == 'Erkek':
-                # Erkek için: Anneden X kromozomu alır
-                if anne_durumu == "Hasta":
+                if anne_hasta and baba_hasta:
+                    # Her ikisi de hasta ise çocuk kesinlikle taşıyıcı
                     risk_yuzdesi = 0  # Hastalık görülme olasılığı gösterilmez
                     risk_bilgisi['risk_seviyesi'] = 'Çok Yüksek'
-                    risk_bilgisi['aciklama'] = 'Anneniz hasta. X-bağlı hastalıklar için kesinlikle taşıyıcısınız (%100).'
+                    risk_bilgisi['aciklama'] = 'Her iki ebeveyn de hasta. Kesinlikle taşıyıcısınız (%100).'
                     risk_bilgisi['tasiyici_olabilirlik'] = 100
-                elif anne_durumu == "Taşıyıcı":
+                elif (anne_hasta and baba_tasiyici) or (anne_tasiyici and baba_hasta):
                     risk_yuzdesi = 0  # Hastalık görülme olasılığı gösterilmez
                     risk_bilgisi['risk_seviyesi'] = 'Yüksek'
-                    risk_bilgisi['aciklama'] = 'Anneniz taşıyıcı. X-bağlı hastalıklar için taşıyıcı olma olasılığınız %50.'
+                    risk_bilgisi['aciklama'] = 'Bir ebeveyn hasta, diğeri taşıyıcı. Taşıyıcı olma olasılığınız %50.'
                     risk_bilgisi['tasiyici_olabilirlik'] = 50
-                else:
-                    risk_yuzdesi = 0
-                    risk_bilgisi['risk_seviyesi'] = 'Düşük'
-                    risk_bilgisi['aciklama'] = 'Annenizde hastalık belirtisi yok. Taşıyıcı olma riski düşük.'
-                    risk_bilgisi['tasiyici_olabilirlik'] = 0
-            else:  # Kadın
-                # Kadın için: Hem anneden hem babadan X kromozomu alır
-                if baba_durumu == "Hasta":
-                    # Baba hasta ise, kız çocuk kesinlikle taşıyıcı
+                elif anne_hasta or baba_hasta:
                     risk_yuzdesi = 0
                     risk_bilgisi['risk_seviyesi'] = 'Orta'
-                    risk_bilgisi['aciklama'] = 'Babanız hasta. X-bağlı hastalıklar için kesinlikle taşıyıcısınız.'
+                    risk_bilgisi['aciklama'] = 'Bir ebeveyn hasta. Kesinlikle taşıyıcısınız (%100).'
                     risk_bilgisi['tasiyici_olabilirlik'] = 100
-                elif anne_durumu == "Hasta" and baba_durumu != "Hasta":
-                    risk_yuzdesi = 0
+                elif anne_tasiyici and baba_tasiyici:
+                    risk_yuzdesi = 0  # Hastalık görülme olasılığı gösterilmez
                     risk_bilgisi['risk_seviyesi'] = 'Orta'
-                    risk_bilgisi['aciklama'] = 'Anneniz hasta. Taşıyıcı olabilirsiniz, ancak babanız hasta olmadığı için hastalık görülme riski düşük.'
+                    risk_bilgisi['aciklama'] = 'Her iki ebeveyn de taşıyıcı. Taşıyıcı olma olasılığınız %50.'
                     risk_bilgisi['tasiyici_olabilirlik'] = 50
-                elif anne_durumu == "Taşıyıcı" or baba_durumu == "Taşıyıcı":
+                elif anne_tasiyici or baba_tasiyici:
                     risk_yuzdesi = 0
                     risk_bilgisi['risk_seviyesi'] = 'Düşük'
-                    risk_bilgisi['aciklama'] = 'Bir ebeveyn taşıyıcı. Taşıyıcı olabilirsiniz.'
-                    risk_bilgisi['tasiyici_olabilirlik'] = 25
+                    risk_bilgisi['aciklama'] = 'Bir ebeveyn taşıyıcı. Taşıyıcı olma olasılığınız %50.'
+                    risk_bilgisi['tasiyici_olabilirlik'] = 50
                 else:
                     risk_yuzdesi = 0
                     risk_bilgisi['risk_seviyesi'] = 'Çok Düşük'
-                    risk_bilgisi['aciklama'] = 'Ebeveynlerde hastalık belirtisi yok. X-bağlı hastalıklar için kadınlarda risk çok düşük.'
+                    risk_bilgisi['aciklama'] = 'Ebeveynlerde hastalık belirtisi yok. Taşıyıcı olma riski düşük.'
                     risk_bilgisi['tasiyici_olabilirlik'] = 0
+                
+        elif sekil == 'X-Bağlı Çekinik':
+                # X-bağlı çekinik kalıtım (cinsiyete bağlı)
+                if kullanici_cinsiyet == 'Erkek':
+                    # Erkek için: Anneden X kromozomu alır
+                    if anne_durumu == "Hasta":
+                        risk_yuzdesi = 0  # Hastalık görülme olasılığı gösterilmez
+                        risk_bilgisi['risk_seviyesi'] = 'Çok Yüksek'
+                        risk_bilgisi['aciklama'] = 'Anneniz hasta. X-bağlı hastalıklar için kesinlikle taşıyıcısınız (%100).'
+                        risk_bilgisi['tasiyici_olabilirlik'] = 100
+                    elif anne_durumu == "Taşıyıcı":
+                        risk_yuzdesi = 0  # Hastalık görülme olasılığı gösterilmez
+                        risk_bilgisi['risk_seviyesi'] = 'Yüksek'
+                        risk_bilgisi['aciklama'] = 'Anneniz taşıyıcı. X-bağlı hastalıklar için taşıyıcı olma olasılığınız %50.'
+                        risk_bilgisi['tasiyici_olabilirlik'] = 50
+                    else:
+                        risk_yuzdesi = 0
+                        risk_bilgisi['risk_seviyesi'] = 'Düşük'
+                        risk_bilgisi['aciklama'] = 'Annenizde hastalık belirtisi yok. Taşıyıcı olma riski düşük.'
+                        risk_bilgisi['tasiyici_olabilirlik'] = 0
+                else:  # Kadın
+                    # Kadın için: Hem anneden hem babadan X kromozomu alır
+                    if baba_durumu == "Hasta":
+                        # Baba hasta ise, kız çocuk kesinlikle taşıyıcı
+                        risk_yuzdesi = 0
+                        risk_bilgisi['risk_seviyesi'] = 'Orta'
+                        risk_bilgisi['aciklama'] = 'Babanız hasta. X-bağlı hastalıklar için kesinlikle taşıyıcısınız.'
+                        risk_bilgisi['tasiyici_olabilirlik'] = 100
+                    elif anne_durumu == "Hasta" and baba_durumu != "Hasta":
+                        risk_yuzdesi = 0
+                        risk_bilgisi['risk_seviyesi'] = 'Orta'
+                        risk_bilgisi['aciklama'] = 'Anneniz hasta. Taşıyıcı olabilirsiniz, ancak babanız hasta olmadığı için hastalık görülme riski düşük.'
+                        risk_bilgisi['tasiyici_olabilirlik'] = 50
+                    elif anne_durumu == "Taşıyıcı" or baba_durumu == "Taşıyıcı":
+                        risk_yuzdesi = 0
+                        risk_bilgisi['risk_seviyesi'] = 'Düşük'
+                        risk_bilgisi['aciklama'] = 'Bir ebeveyn taşıyıcı. Taşıyıcı olabilirsiniz.'
+                        risk_bilgisi['tasiyici_olabilirlik'] = 25
+                    else:
+                        risk_yuzdesi = 0
+                        risk_bilgisi['risk_seviyesi'] = 'Çok Düşük'
+                        risk_bilgisi['aciklama'] = 'Ebeveynlerde hastalık belirtisi yok. X-bağlı hastalıklar için kadınlarda risk çok düşük.'
+                        risk_bilgisi['tasiyici_olabilirlik'] = 0
+        
+        # Model sonuçlarını risk bilgisine ekle
+        if model_tahmin and model_olasilik is not None:
+            risk_bilgisi['model_tahmin'] = model_tahmin
+            risk_bilgisi['model_olasilik'] = round(model_olasilik, 1)
+            risk_bilgisi['model_kullanildi'] = True
+            # Model risk seviyesini kullan (eğer model varsa)
+            if model_risk_seviyesi:
+                risk_bilgisi['risk_seviyesi'] = model_risk_seviyesi
+        else:
+            risk_bilgisi['model_kullanildi'] = False
         
         risk_bilgisi['risk_yuzdesi'] = 0  # Hastalık görülme olasılığı her zaman 0 (kullanıcıya hastalık atanmaz)
         
@@ -260,10 +453,10 @@ def calculate_user_risk_algorithmic(soy_agaci_listesi, kullanici_birey_id, kulla
             
             return None
         
-        # Ebeveynlerde hastalık yoksa, daha uzak atalara bak
+        # Ebeveynlerde hastalık yoksa, daha uzak atalara bak (Model yoksa)
         ata_hastalik_var = False
         ata_bilgisi = None
-        if not anne_durumu and not baba_durumu:
+        if not model_var_mi and not anne_durumu and not baba_durumu:
             ata_bilgisi = check_ancestors_for_disease(kullanici_birey_id_str)
             ata_hastalik_var = ata_bilgisi is not None
             
@@ -282,16 +475,14 @@ def calculate_user_risk_algorithmic(soy_agaci_listesi, kullanici_birey_id, kulla
         tasiyici_olabilirlik = risk_bilgisi.get('tasiyici_olabilirlik', 0)
         risk_seviyesi = risk_bilgisi.get('risk_seviyesi', 'Çok Düşük')
         
-        # Risk varsa ekle (taşıyıcı olabilirlik > 0, atalarda hastalık var, ebeveynlerde hastalık var, veya risk seviyesi düşük değil)
-        # NOT: risk_seviyesi != 'Çok Düşük' kontrolü her zaman True olacak çünkü risk_seviyesi zaten 'Düşük', 'Orta', 'Yüksek', 'Çok Yüksek' veya 'Çok Düşük' olabilir
-        # Bu yüzden bu kontrolü kaldıralım ve sadece gerçek risk belirtilerine bakalım
-        has_risk = tasiyici_olabilirlik > 0 or ata_hastalik_var or anne_durumu or baba_durumu
+        # Risk varsa ekle (taşıyıcı olabilirlik > 0, atalarda hastalık var, ebeveynlerde hastalık var, veya model tahmin var)
+        has_risk = tasiyici_olabilirlik > 0 or ata_hastalik_var or anne_durumu or baba_durumu or (model_tahmin and model_tahmin != 'Sağlam')
         
         if has_risk:
             # Geçiş kaynağını risk bilgisine ekle
             risk_bilgisi['gecis_kaynagi'] = gecis_kaynagi if gecis_kaynagi else "Bilinmeyen kaynak"
             risk_analizi.append(risk_bilgisi)
-            print(f">>> DEBUG (risk_analysis): Risk EKLENDI: {hastalik_adi}, seviye={risk_seviyesi}, tasiyici={tasiyici_olabilirlik}%, ata_var={ata_hastalik_var}, anne={anne_durumu}, baba={baba_durumu}, kaynak={gecis_kaynagi}", file=sys.stderr)
+            print(f">>> DEBUG (risk_analysis): Risk EKLENDI: {hastalik_adi}, seviye={risk_seviyesi}, tasiyici={tasiyici_olabilirlik}%, model_tahmin={model_tahmin}, model_olasilik={model_olasilik}, model_kullanildi={risk_bilgisi.get('model_kullanildi')}, ata_var={ata_hastalik_var}, anne={anne_durumu}, baba={baba_durumu}, kaynak={gecis_kaynagi}, onerilen_bolum={risk_bilgisi.get('onerilen_bolum')}", file=sys.stderr)
         else:
             print(f">>> DEBUG (risk_analysis): Risk ATLANDI (hiç risk yok): {hastalik_adi}, seviye={risk_seviyesi}, tasiyici={tasiyici_olabilirlik}%, ata_var={ata_hastalik_var}, anne={anne_durumu}, baba={baba_durumu}", file=sys.stderr)
     

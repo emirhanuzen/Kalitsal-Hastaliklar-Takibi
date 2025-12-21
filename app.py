@@ -545,14 +545,27 @@ def api_profil():
                                 # Açıklama limiti kaldırıldı - Model tam açıklama üretebilir
                                 risk['bilgi_icerigi'] = bilgi_metni if bilgi_metni else risk.get('aciklama',
                                                                                                  f"{hastalik_adi} hakkında genel bilgi.")
+                                # Önerilen bölümü AI sonucundan al veya risk analizinden koru
+                                risk['onerilen_bolum'] = ai_result.get('onerilen_bolum') or risk.get('onerilen_bolum', 'Tıbbi Genetik Bölümü')
+                                print(f">>> DEBUG (app.py): Risk için önerilen bölüm güncellendi: {hastalik_adi} -> {risk.get('onerilen_bolum')}", file=sys.stderr)
                             else:
                                 risk['bilgi_icerigi'] = risk.get('aciklama', f"{hastalik_adi} hakkında genel bilgi.")
+                                # AI başarısız olsa bile risk analizinden gelen önerilen bölümü koru
+                                risk['onerilen_bolum'] = risk.get('onerilen_bolum', 'Tıbbi Genetik Bölümü')
                         except Exception as e:
                             print(f"!!! AI model hatası (risk analizi): {e}", file=sys.stderr)
                             import traceback
                             traceback.print_exc()
                             risk['bilgi_icerigi'] = risk.get('aciklama',
                                                              f"{risk.get('hastalik', 'Hastalık')} için risk analizi yapıldı.")
+                            # Exception durumunda da önerilen bölümü koru veya belirle
+                            if not risk.get('onerilen_bolum'):
+                                from services.local_ai_service import get_recommended_department
+                                hastalik_adi = risk.get('hastalik', risk.get('hastalik_adi', ''))
+                                if hastalik_adi:
+                                    risk['onerilen_bolum'] = get_recommended_department(hastalik_adi)
+                                else:
+                                    risk['onerilen_bolum'] = 'Tıbbi Genetik Bölümü'
             except Exception as e:
                 print(f"!!! MongoDB hatası: {e}", file=sys.stderr)
                 import traceback
@@ -561,7 +574,7 @@ def api_profil():
         print(f">>> DEBUG: API profil response hazırlanıyor. Risk analizi sayısı: {len(risk_analizi)}", file=sys.stderr)
         if risk_analizi:
             print(
-                f">>> DEBUG: İlk risk örneği: hastalik={risk_analizi[0].get('hastalik', 'Yok')}, risk_seviyesi={risk_analizi[0].get('risk_seviyesi', 'Yok')}",
+                f">>> DEBUG: İlk risk örneği: hastalik={risk_analizi[0].get('hastalik', 'Yok')}, risk_seviyesi={risk_analizi[0].get('risk_seviyesi', 'Yok')}, onerilen_bolum={risk_analizi[0].get('onerilen_bolum', 'YOK')}, model_olasilik={risk_analizi[0].get('model_olasilik', 'Yok')}, model_tahmin={risk_analizi[0].get('model_tahmin', 'Yok')}, model_kullanildi={risk_analizi[0].get('model_kullanildi', False)}",
                 file=sys.stderr)
         else:
             print(

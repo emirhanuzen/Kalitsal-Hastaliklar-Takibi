@@ -28,6 +28,52 @@ TOKENIZER = None
 _disease_cache = {}
 _risk_analysis_cache = {}
 
+# Hastalık-Bölüm Mapping'i
+# Her hastalık için uygun hastane bölümü
+HASTALIK_BOLUM_MAPPING = {
+    # Autosomal Recessive Hastalıklar
+    'Akdeniz Anemisi': 'Hematoloji Bölümü',
+    'Kistik Fibrozis': 'Göğüs Hastalıkları Bölümü',
+    'SMA': 'Nöroloji Bölümü',
+    'Orak Hücreli Anemi': 'Hematoloji Bölümü',
+    'Fenilketonüri (PKU)': 'Metabolizma ve Endokrinoloji Bölümü',
+    'Tay-Sachs': 'Nöroloji Bölümü',
+    'Albinizm': 'Dermatoloji Bölümü',
+    'Galaktozemi': 'Metabolizma ve Endokrinoloji Bölümü',
+    'Wilson Hastalığı': 'Gastroenteroloji Bölümü',
+    'Ailevi Akdeniz Ateşi': 'İç Hastalıkları (Romatoloji) Bölümü',
+    
+    # X-Linked Recessive Hastalıklar
+    'Hemofili A': 'Hematoloji Bölümü',
+    'Hemofili B': 'Hematoloji Bölümü',
+    'Renk Körlüğü': 'Göz Hastalıkları Bölümü',
+    'Duchenne MD': 'Nöroloji Bölümü',
+    'G6PD Eksikliği': 'Hematoloji Bölümü',
+    
+    # Autosomal Dominant Hastalıklar
+    'Huntington': 'Nöroloji Bölümü',
+    'Marfan Sendromu': 'Kardiyoloji Bölümü',
+    'Akondroplazi': 'Ortopedi ve Travmatoloji Bölümü',
+    'Polikistik Böbrek': 'Nefroloji Bölümü',
+    'Nörofibromatozis': 'Nöroloji Bölümü'
+}
+
+
+def get_recommended_department(hastalik_adi):
+    """
+    Hastalık adına göre önerilen hastane bölümünü döndürür.
+    
+    Args:
+        hastalik_adi: Hastalık adı
+    
+    Returns:
+        str: Önerilen hastane bölümü (varsayılan: 'Tıbbi Genetik Bölümü')
+    """
+    result = HASTALIK_BOLUM_MAPPING.get(hastalik_adi, 'Tıbbi Genetik Bölümü')
+    if result == 'Tıbbi Genetik Bölümü':
+        print(f">>> DEBUG (get_recommended_department): '{hastalik_adi}' mapping'de bulunamadı, varsayılan kullanılıyor. Mevcut key'ler: {list(HASTALIK_BOLUM_MAPPING.keys())[:5]}...", file=sys.stderr)
+    return result
+
 
 def load_model():
     """
@@ -275,11 +321,15 @@ def get_disease_information(hastalik_adi, kalitim_sekli, durum="Taşıyıcı", r
             aciklama
         )
         
+        # Önerilen bölümü belirle
+        onerilen_bolum = get_recommended_department(hastalik_adi)
+        
         result = {
             "hastalik_adi": hastalik_adi,
             "kalitim_sekli": kalitim_sekli,
             "durum": durum,
             "bilgi_icerigi": bilgi_icerigi,
+            "onerilen_bolum": onerilen_bolum,
             "basarili": True
         }
         
@@ -291,11 +341,13 @@ def get_disease_information(hastalik_adi, kalitim_sekli, durum="Taşıyıcı", r
         traceback.print_exc()
         
         # Hata durumunda varsayılan mesaj
+        onerilen_bolum = get_recommended_department(hastalik_adi)
         return {
             "hastalik_adi": hastalik_adi,
             "kalitim_sekli": kalitim_sekli,
             "durum": durum,
             "bilgi_icerigi": f"{hastalik_adi} hakkında risk analizi yapıldı. Detaylı bilgi için bir genetik danışmana başvurmanız önerilir.",
+            "onerilen_bolum": onerilen_bolum,
             "basarili": False
         }
 

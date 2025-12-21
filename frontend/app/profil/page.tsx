@@ -78,7 +78,10 @@ export default function ProfilSayfasi() {
           bilgi_icerigi: risk.bilgi_icerigi || risk.aciklama || 'Risk analizi yapıldı.',
           gecis_kaynagi: risk.gecis_kaynagi || null,
           onerilen_bolum: risk.onerilen_bolum || 'Tıbbi Genetik Bölümü',
-          detayli_aciklama: risk.bilgi_icerigi || risk.aciklama || 'Detaylı bilgi için genetik danışmanlık almanız önerilir.'
+          detayli_aciklama: risk.bilgi_icerigi || risk.aciklama || 'Detaylı bilgi için genetik danışmanlık almanız önerilir.',
+          model_olasilik: risk.model_olasilik || null,
+          model_tahmin: risk.model_tahmin || null,
+          model_kullanildi: risk.model_kullanildi || false
         }));
         
         setHastalikBilgileri(formattedRisks);
@@ -236,6 +239,12 @@ export default function ProfilSayfasi() {
                                                 <strong className="h5 mb-0 text-primary">{risk.hastalik_adi}</strong>
                                                 <div>
                                                     <span className="badge bg-secondary me-2">{risk.kalitim_sekli}</span>
+                                                    {risk.model_olasilik && risk.model_kullanildi && risk.model_tahmin && (
+                                                        <span className="badge bg-info me-2" title={`Model Tahmini: ${risk.model_tahmin} - Güven Oranı: %${risk.model_olasilik}`}>
+                                                            <i className="bi bi-cpu me-1"></i>
+                                                            {risk.model_tahmin}: %{risk.model_olasilik}
+                                                        </span>
+                                                    )}
                                                     <span className={`badge ${risk.durum === 'Risk Yok' ? 'bg-success' : risk.durum === 'Taşıyıcı' ? 'bg-warning text-dark' : 'bg-danger'}`}>
                                                         <i className="bi bi-activity me-1"></i>
                                                         {risk.durum}
@@ -400,10 +409,34 @@ export default function ProfilSayfasi() {
                                     <h5 className="modal-title fw-bold">
                                         {selectedRisk.durum === 'Risk Yok' ? <i className="bi bi-shield-check me-2"></i> : <i className="bi bi-exclamation-triangle-fill me-2"></i>}
                                         {selectedRisk.hastalik_adi}
+                                        {selectedRisk.model_olasilik && selectedRisk.model_kullanildi && selectedRisk.model_tahmin && (
+                                            <span className="badge bg-info ms-2" title={`Model Tahmini: ${selectedRisk.model_tahmin} - Güven Oranı: %${selectedRisk.model_olasilik}`}>
+                                                <i className="bi bi-cpu me-1"></i>
+                                                {selectedRisk.model_tahmin}: %{selectedRisk.model_olasilik}
+                                            </span>
+                                        )}
                                     </h5>
                                     <button type="button" className="btn-close btn-close-white" onClick={() => setSelectedRisk(null)}></button>
                                 </div>
                                 <div className="modal-body p-4">
+                                    {selectedRisk.model_olasilik && selectedRisk.model_kullanildi && selectedRisk.model_tahmin && (
+                                        <div className="mb-4 p-3 bg-info bg-opacity-10 rounded border-start border-4 border-info">
+                                            <h6 className="fw-bold text-info mb-2">
+                                                <i className="bi bi-cpu me-2"></i>
+                                                Yapay Zeka Model Analizi
+                                            </h6>
+                                            <p className="mb-1">
+                                                <strong>Model Tahmini:</strong> {selectedRisk.model_tahmin}
+                                            </p>
+                                            <p className="mb-0">
+                                                <strong>Güven Oranı:</strong> %{selectedRisk.model_olasilik}
+                                            </p>
+                                            <small className="text-muted d-block mt-2">
+                                                Bu yüzde, modelin "{selectedRisk.model_tahmin}" tahminine olan güvenini gösterir. Hastalığa yakalanma riski değil, modelin tahminine olan güven oranıdır.
+                                            </small>
+                                        </div>
+                                    )}
+                                    
                                     <div className="mb-4">
                                         <h6 className="fw-bold text-muted text-uppercase small">Hastalık / Durum Hakkında</h6>
                                         <p className="fs-6">{selectedRisk.detayli_aciklama || selectedRisk.bilgi_icerigi}</p>
@@ -424,9 +457,6 @@ export default function ProfilSayfasi() {
                                 </div>
                                 <div className="modal-footer border-0">
                                     <button type="button" className="btn btn-secondary rounded-pill px-4" onClick={() => setSelectedRisk(null)}>Kapat</button>
-                                    <button type="button" className="btn btn-primary rounded-pill px-4">
-                                        <i className="bi bi-calendar-check me-2"></i>Randevu Ara
-                                    </button>
                                 </div>
                             </div>
                         </div>
