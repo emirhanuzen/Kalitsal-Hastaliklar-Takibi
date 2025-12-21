@@ -1,18 +1,51 @@
 // app/kayit-ol/page.tsx
 "use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 export default function KayitSayfasi() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
+  const [isChildAccount, setIsChildAccount] = useState(false);
+  const [parentTc, setParentTc] = useState<string | null>(null);
+  const [childTc, setChildTc] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     isim: '', soyad: '', cinsiyet: '', dogum_tarihi: '',
     kendi_tc: '', email: '', password: '', ebeveyn_tc: ''
   });
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
+
+  // Check URL parameters for Scenario 2 (Child Account Creation)
+  useEffect(() => {
+    try {
+      const parent_tc = searchParams?.get('parent_tc');
+      const ebeveyn_tc = searchParams?.get('ebeveyn_tc');
+      const child_tc = searchParams?.get('child_tc');
+      const tc = searchParams?.get('tc');
+      
+      // Support both parent_tc and ebeveyn_tc for backward compatibility
+      const parentTcValue = parent_tc || ebeveyn_tc;
+      const childTcValue = child_tc || tc;
+      
+      if (parentTcValue) {
+        setIsChildAccount(true);
+        setParentTc(parentTcValue);
+        // Pre-fill ebeveyn_tc in form data
+        setFormData(prev => ({ ...prev, ebeveyn_tc: parentTcValue }));
+      }
+      
+      if (childTcValue) {
+        setChildTc(childTcValue);
+        // Pre-fill child's TC if provided
+        setFormData(prev => ({ ...prev, kendi_tc: childTcValue }));
+      }
+    } catch (error) {
+      console.error('Error reading URL parameters:', error);
+    }
+  }, [searchParams]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -42,12 +75,31 @@ export default function KayitSayfasi() {
       return;
     }
 
+    // Validate parent TC if it's a child account
+    if (isChildAccount && formData.ebeveyn_tc && formData.ebeveyn_tc.length !== 11) {
+      alert('Ebeveyn TC kimlik numarası 11 haneli olmalıdır!');
+      return;
+    }
+
     setLoading(true);
     try {
+      // Prepare payload - ensure ebeveyn_tc is included if it's a child account
+      const payload: any = { ...formData };
+      
+      // If it's a child account, ensure ebeveyn_tc is sent (even if empty, backend will handle it)
+      if (isChildAccount && parentTc) {
+        payload.ebeveyn_tc = parentTc;
+      }
+      
+      // Remove ebeveyn_tc if it's empty and not a child account (Scenario 1)
+      if (!isChildAccount && !payload.ebeveyn_tc) {
+        payload.ebeveyn_tc = '';
+      }
+      
       const response = await fetch('/api/register', { 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData), 
+        body: JSON.stringify(payload), 
       });
 
       const data = await response.json();
@@ -81,8 +133,27 @@ export default function KayitSayfasi() {
     <div className="container d-flex align-items-center justify-content-center min-vh-100 py-5">
       <div className="modern-card animate-fade-in" style={{maxWidth: '800px'}}>
         <h2 className="header-title mb-4">
-            <i className="bi bi-person-plus-fill me-2"></i> Yeni Kullanıcı Kaydı
+            <i className="bi bi-person-plus-fill me-2"></i> 
+            {isChildAccount ? 'Çocuk Hesabı Kaydı' : 'Yeni Kullanıcı Kaydı'}
         </h2>
+
+        {/* Child Account Info Banner */}
+        {isChildAccount && parentTc && (
+          <div className="alert alert-info d-flex align-items-center mb-4" role="alert">
+            <i className="bi bi-info-circle-fill me-2 fs-5"></i>
+            <div>
+              <strong>Çocuk Hesabı Kaydı</strong>
+              <br />
+              <small>Ebeveyn TC: <code>{parentTc}</code></small>
+              {childTc && (
+                <>
+                  <br />
+                  <small>Çocuk TC: <code>{childTc}</code></small>
+                </>
+              )}
+            </div>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit}>
             <div className="row mb-3">
@@ -112,9 +183,49 @@ export default function KayitSayfasi() {
             </div>
 
             <div className="mb-4">
-                <label className="form-label">TC Kimlik No (11 Hane) <span className="text-danger">*</span></label>
-                <input type="text" className="form-control" name="kendi_tc" required maxLength={11} placeholder="11122233344" value={formData.kendi_tc} onChange={handleChange} />
+                <label className="form-label">
+                    {isChildAccount ? 'Çocuk TC Kimlik No' : 'TC Kimlik No'} (11 Hane) <span className="text-danger">*</span>
+                </label>
+                <input 
+                    type="text" 
+                    className="form-control" 
+                    name="kendi_tc" 
+                    required 
+                    maxLength={11} 
+                    placeholder="11122233344" 
+                    value={formData.kendi_tc} 
+                    onChange={handleChange}
+                    readOnly={!!childTc}  // Read-only if pre-filled from URL
+                />
+                {isChildAccount && (
+                    <small className="form-text text-muted">
+                        Bu TC, simülasyon sonucunda oluşturulan çocuk TC'sidir.
+                    </small>
+                )}
             </div>
+
+            {/* Ebeveyn TC Field - Show only for child accounts or if manually entered */}
+            {(isChildAccount || formData.ebeveyn_tc) && (
+                <div className="mb-4">
+                    <label className="form-label">Ebeveyn TC Kimlik No (11 Hane) <span className="text-danger">*</span></label>
+                    <input 
+                        type="text" 
+                        className="form-control" 
+                        name="ebeveyn_tc" 
+                        required={isChildAccount}
+                        maxLength={11} 
+                        placeholder="Ebeveyn TC'si" 
+                        value={formData.ebeveyn_tc} 
+                        onChange={handleChange}
+                        readOnly={isChildAccount && !!parentTc}  // Read-only if from URL
+                    />
+                    {isChildAccount && (
+                        <small className="form-text text-muted">
+                            Bu TC, hesabınızın bağlı olduğu ebeveyn hesabının TC'sidir.
+                        </small>
+                    )}
+                </div>
+            )}
 
             <div className="mb-4">
                 <label className="form-label">Profil Fotoğrafı (isteğe bağlı)</label>

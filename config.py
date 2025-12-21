@@ -7,8 +7,8 @@ MONGO_CONNECTION_STRING = 'mongodb+srv://Emirhan_Uzen:Codegen01"@krap.uczuzhr.mo
 MONGO_DATABASE_NAME = 'KRAP_Atlas_DB'  # Local MongoDB veritabanı adı
 
 # MS SQL Server Ayarları
-SQL_SERVER_SUNUCU_ADI = 'HMD16\\SQLEXPRESS'  # SQL Server sunucu adı
-SQL_SERVER_VERITABANI_ADI = 'KRAP_DB'  # Veritabanı adı
+SQL_SERVER_SUNUCU_ADI = 'EMIRHAN'  # SQL Server sunucu adı
+SQL_SERVER_VERITABANI_ADI = 'KRAP_DD'  # Veritabanı adı
 
 # Flask Ayarları
 JSON_AS_ASCII = False  # Türkçe karakterler için

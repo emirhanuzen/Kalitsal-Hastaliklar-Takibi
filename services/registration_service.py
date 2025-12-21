@@ -39,7 +39,7 @@ def register_new_family(data, sql_conn, cursor):
         }
         try:
             soy_agaci_dokumani, kok_birey_id, cocuk_bilgileri = uret_dinamik_soy_agaci(
-                kullanici_kayit_verisi, hastalik_listesi
+                kullanici_kayit_verisi, hastalik_listesi, sql_conn
             )
             print(f">>> DEBUG: Algoritma çalıştı, {len(soy_agaci_dokumani)} birey üretildi.")
             print(f">>> DEBUG: Kök kullanıcının çocuk bilgileri: {cocuk_bilgileri}")

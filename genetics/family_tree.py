@@ -29,9 +29,15 @@ def get_bireyler():
     return TUM_BIREYLER
 
 
-def agaci_uret_ve_genleri_aktar(birey_id, hedef_kusak, is_ata_uretimi):
+def agaci_uret_ve_genleri_aktar(birey_id, hedef_kusak, is_ata_uretimi, sql_conn=None):
     """
     Özyinelemeli ana fonksiyon. Hem ağacı kurar hem genleri aktarır.
+    
+    Args:
+        birey_id: Current person's ID
+        hedef_kusak: Target generation
+        is_ata_uretimi: True for ancestors, False for descendants
+        sql_conn: Optional SQL connection for TC uniqueness checking
     """
     global TUM_BIREYLER
 
@@ -49,8 +55,8 @@ def agaci_uret_ve_genleri_aktar(birey_id, hedef_kusak, is_ata_uretimi):
     # --- ATA ÜRETİMİ (Geriye Doğru) ---
     if is_ata_uretimi:
         ebeveyn_dogum_yili = mevcut_birey["dogum_yili"] - random.randint(20, 35)
-        baba = kisi_olustur("Erkek", mevcut_birey["soyad"], ebeveyn_dogum_yili, mevcut_kusak - 1)
-        anne = kisi_olustur("Kadın", random.choice(SOYADLARI), ebeveyn_dogum_yili, mevcut_kusak - 1)
+        baba = kisi_olustur("Erkek", mevcut_birey["soyad"], ebeveyn_dogum_yili, mevcut_kusak - 1, sql_conn=sql_conn)
+        anne = kisi_olustur("Kadın", random.choice(SOYADLARI), ebeveyn_dogum_yili, mevcut_kusak - 1, sql_conn=sql_conn)
 
         TUM_BIREYLER[baba["birey_id"]] = baba
         TUM_BIREYLER[anne["birey_id"]] = anne
@@ -73,8 +79,8 @@ def agaci_uret_ve_genleri_aktar(birey_id, hedef_kusak, is_ata_uretimi):
                 anne["genotip"][hastalik_adi] = determine_initial_genotype(hastalik_adi, anne["cinsiyet"])
 
         # Özyineleme: Ataları üretmeye devam et
-        agaci_uret_ve_genleri_aktar(baba["birey_id"], hedef_kusak, True)
-        agaci_uret_ve_genleri_aktar(anne["birey_id"], hedef_kusak, True)
+        agaci_uret_ve_genleri_aktar(baba["birey_id"], hedef_kusak, True, sql_conn)
+        agaci_uret_ve_genleri_aktar(anne["birey_id"], hedef_kusak, True, sql_conn)
 
         # GEN AKTARIMI (Ata Üretimi Sonrası) - Çocuğa (mevcut_birey) genleri aktar
         anne_genotipleri = anne.get("genotip", {})
@@ -138,9 +144,31 @@ def agaci_uret_ve_genleri_aktar(birey_id, hedef_kusak, is_ata_uretimi):
                 continue
 
             cocugun_cinsiyeti = random.choice(["Erkek", "Kadın"])
-            cocugun_soyadi = mevcut_birey["soyad"]
+            
+            # TURKISH NAMING CONVENTION - Gender-Based Surname Assignment:
+            # Rule 1: If parent is MALE (Father) -> Child inherits father's surname exactly
+            # Rule 2: If parent is FEMALE (Mother) -> Child takes father's surname (simulated)
+            #         Since father is simulated, assign random surname different from mother's
+            parent_cinsiyeti = mevcut_birey["cinsiyet"]
+            parent_soyadi = mevcut_birey["soyad"]
+            
+            if parent_cinsiyeti == "Erkek":
+                # FATHER: Child inherits father's surname
+                cocugun_soyadi = parent_soyadi
+            else:
+                # MOTHER: Child takes father's surname (simulated with random surname)
+                # Get available surnames (excluding mother's surname)
+                available_soyadlari = [s for s in SOYADLARI if s != parent_soyadi]
+                
+                # If somehow all surnames match (shouldn't happen), use a fallback
+                if not available_soyadlari:
+                    available_soyadlari = SOYADLARI.copy()
+                
+                # Select random surname different from mother
+                cocugun_soyadi = random.choice(available_soyadlari)
 
-            cocuk = kisi_olustur(cocugun_cinsiyeti, cocugun_soyadi, cocuk_dogum_yili, mevcut_kusak + 1)
+            # Generate child with unique TC and new surname
+            cocuk = kisi_olustur(cocugun_cinsiyeti, cocugun_soyadi, cocuk_dogum_yili, mevcut_kusak + 1, sql_conn=sql_conn)
             cocuk["genotip"] = {}
 
             # GEN AKTARIMI (Çocuk Üretimi Sırasında)
@@ -208,7 +236,7 @@ def agaci_uret_ve_genleri_aktar(birey_id, hedef_kusak, is_ata_uretimi):
             TUM_BIREYLER[cocuk["birey_id"]] = cocuk
 
             # Özyineleme
-            agaci_uret_ve_genleri_aktar(cocuk["birey_id"], hedef_kusak, False)
+            agaci_uret_ve_genleri_aktar(cocuk["birey_id"], hedef_kusak, False, sql_conn)
 
 
 def olustur_final_listesi(kullanici_birey_id=None):

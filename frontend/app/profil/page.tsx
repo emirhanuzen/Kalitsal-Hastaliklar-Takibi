@@ -22,22 +22,23 @@ export default function ProfilSayfasi() {
   // Soy Ağacı Alt Sekmesi (false: Geçmiş, true: Gelecek/Çocuklar)
   const [showChildren, setShowChildren] = useState(false);
 
-  // --- 1. GİRİŞ KONTROLÜ (TEST İÇİN BYPASS EDİLDİ) ---
+  // --- 1. GİRİŞ KONTROLÜ (GERÇEK KULLANICI) ---
   useEffect(() => {
-    const testKullanici = {
-        user_id: "test-1",
-        isim: "Test",
-        soyad: "Kullanıcısı",
-        email: "test@genetik.com",
-        kendi_tc: "12345678901",
-        dogum_tarihi: "01.01.1990",
-        cinsiyet: "Erkek", // veya 'Kadın'
-        profilePhoto: null // Varsa base64 string
-    };
-
-    console.log("🛠️ TEST MODU: Sahte kullanıcı ile giriş yapıldı.");
-    setUser(testKullanici);
-  }, []);
+    const savedUserString = localStorage.getItem('currentUser');
+    if (savedUserString) {
+      try {
+        const savedUser = JSON.parse(savedUserString);
+        setUser(savedUser);
+      } catch (error) {
+        console.error('Kullanıcı bilgisi parse edilemedi:', error);
+        localStorage.removeItem('currentUser');
+        router.push('/');
+      }
+    } else {
+      // Kullanıcı giriş yapmamış, login sayfasına yönlendir
+      router.push('/');
+    }
+  }, [router]);
 
   // --- 2. VERİ ÇEKME TETİKLEYİCİSİ ---
   useEffect(() => {
@@ -47,98 +48,86 @@ export default function ProfilSayfasi() {
     }
   }, [user]);
 
-  // --- 3. RİSK ANALİZİ (GÜNCELLENMİŞ TEST VERİSİ) ---
+  // --- 3. RİSK ANALİZİ (GERÇEK API) ---
   const fetchDiseaseInfo = async () => {
+    if (!user || !user.user_id) {
+      console.error('Kullanıcı bilgisi eksik');
+      return;
+    }
+
     setYukleniyorAI(true);
     
-    setTimeout(() => {
-        const testRiskVerileri = [
-            {
-                hastalik_adi: "Kistik Fibrozis (Test Verisi)",
-                kalitim_sekli: "Otozomal Çekinik",
-                durum: "Taşıyıcı",
-                risk_seviyesi: "Orta",
-                gecme_olasiligi: "%25",
-                bilgi_icerigi: "Bu genetik varyasyon, akciğer ve sindirim sistemini etkileyebilir.",
-                gecis_kaynagi: "Anne Tarafı",
-                // Yeni Eklenen Detaylar
-                onerilen_bolum: "Tıbbi Genetik ve Göğüs Hastalıkları",
-                detayli_aciklama: "Kistik fibrozis taşıyıcılığı tespit edilmiştir. Klinik belirti göstermeseniz bile, çocuk sahibi olmadan önce genetik danışmanlık almanız önerilir."
-            },
-            {
-                hastalik_adi: "Akdeniz Anemisi",
-                kalitim_sekli: "Otozomal Çekinik",
-                durum: "Risk Yok",
-                risk_seviyesi: "Düşük",
-                gecme_olasiligi: "%0",
-                bilgi_icerigi: "Genetik taramada herhangi bir risk faktörüne rastlanmamıştır.",
-                gecis_kaynagi: null,
-                // Yeni Eklenen Detaylar
-                onerilen_bolum: "Hematoloji (Kan Hastalıkları)",
-                detayli_aciklama: "Yapılan analizlerde beta talasemi (akdeniz anemisi) ile ilgili riskli bir gen dizilimine rastlanmamıştır."
-            }
-        ];
+    try {
+      const response = await fetch(`/api/profil?user_id=${user.user_id}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+      
+      if (response.ok && data.durum === 'basarili' && data.risk_analizi) {
+        // Backend'den gelen risk analizi verilerini formatla
+        const formattedRisks = data.risk_analizi.map((risk: any) => ({
+          hastalik_adi: risk.hastalik || risk.hastalik_adi,
+          kalitim_sekli: risk.kalitim_sekli || 'Bilinmiyor',
+          durum: risk.durum || risk.risk_seviyesi || 'Bilinmiyor',
+          risk_seviyesi: risk.risk_seviyesi || 'Orta',
+          gecme_olasiligi: risk.gecme_olasiligi || risk.tasiyici_olabilirlik ? `%${risk.tasiyici_olabilirlik}` : '%0',
+          bilgi_icerigi: risk.bilgi_icerigi || risk.aciklama || 'Risk analizi yapıldı.',
+          gecis_kaynagi: risk.gecis_kaynagi || null,
+          onerilen_bolum: risk.onerilen_bolum || 'Tıbbi Genetik Bölümü',
+          detayli_aciklama: risk.bilgi_icerigi || risk.aciklama || 'Detaylı bilgi için genetik danışmanlık almanız önerilir.'
+        }));
         
-        setHastalikBilgileri(testRiskVerileri);
-        setYukleniyorAI(false);
-    }, 1000);
+        setHastalikBilgileri(formattedRisks);
+      } else {
+        console.error('Risk analizi alınamadı:', data.mesaj);
+        setHastalikBilgileri([]);
+      }
+    } catch (error) {
+      console.error('Risk analizi hatası:', error);
+      setHastalikBilgileri([]);
+    } finally {
+      setYukleniyorAI(false);
+    }
   };
 
-  // --- 4. SOY AĞACI (TEST VERİSİ) ---
+  // --- 4. SOY AĞACI (GERÇEK API) ---
   const fetchFamilyTree = async () => {
+    if (!user || !user.user_id) {
+      console.error('Kullanıcı bilgisi eksik');
+      return;
+    }
+
     setYukleniyorAgac(true);
 
-    setTimeout(() => {
-        const testSoyAgaci = {
-            gelecek_kusak: {
-                ebeveynler: [
-                    { isim: user?.isim || "Baba", rol: "Baba", tc: user?.kendi_tc, durum: "Sağlıklı", cinsiyet: "Erkek" },
-                    { isim: "Eş (Simülasyon)", rol: "Anne", tc: "Temsili", durum: "Taşıyıcı", cinsiyet: "Kadın" }
-                ],
-                cocuklar: [
-                    { 
-                        id: 1, 
-                        isim: "1. Çocuk (Simülasyon)", 
-                        tc_no: "99988877766", 
-                        risk_orani: "%25", 
-                        durum: "Hasta", 
-                        aciklama: "Kistik fibrozis riski yüksek.", 
-                        cinsiyet: "Erkek" 
-                    },
-                    { 
-                        id: 2, 
-                        isim: "2. Çocuk (Simülasyon)", 
-                        tc_no: "Simülasyon", 
-                        risk_orani: "%50", 
-                        durum: "Taşıyıcı", 
-                        aciklama: "Hastalık belirtisi yok ancak gen taşıyor.", 
-                        cinsiyet: "Kadın" 
-                    },
-                    { 
-                        id: 3, 
-                        isim: "3. Çocuk (Simülasyon)", 
-                        tc_no: "Simülasyon", 
-                        risk_orani: "%25", 
-                        durum: "Sağlıklı", 
-                        aciklama: "Tamamen sağlıklı gen dizilimi.", 
-                        cinsiyet: "Erkek" 
-                    }
-                ]
-            },
-            gecmis_kusaklar: [
-                {
-                    baslik: "1. Kuşak (Dedeler)",
-                    bireyler: [
-                        { id: "g1", isim: "Büyükbaba", rol: "Dede", tc: "111", durum: "Sağlıklı", cinsiyet: "Erkek" },
-                        { id: "g2", isim: "Büyükanne", rol: "Nine", tc: "222", durum: "Taşıyıcı", cinsiyet: "Kadın" }
-                    ]
-                }
-            ]
-        };
+    try {
+      const response = await fetch(`/api/family-tree?user_id=${user.user_id}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
 
-        setSoyAgaci(testSoyAgaci);
-        setYukleniyorAgac(false);
-    }, 1000);
+      const data = await response.json();
+      
+      // Support both old format (durum) and new format (status) for backward compatibility
+      const isSuccess = (data.status === 'success' || data.durum === 'basarili');
+      
+      if (response.ok && isSuccess && data.data) {
+        setSoyAgaci(data.data);
+      } else {
+        console.error('Soy ağacı alınamadı:', data.mesaj);
+        setSoyAgaci(null);
+      }
+    } catch (error) {
+      console.error('Soy ağacı hatası:', error);
+      setSoyAgaci(null);
+    } finally {
+      setYukleniyorAgac(false);
+    }
   };
 
   // --- HELPER FONKSİYONLAR ---
@@ -188,7 +177,7 @@ export default function ProfilSayfasi() {
                         </div>
                         <div>
                             <h2 className="mb-0" style={{color: 'var(--primary-color)', fontWeight: 700}}>Merhaba, {user.isim}!</h2>
-                            <p className="text-muted mb-0">Genetik analiz panelindesin (TEST MODU).</p>
+                            <p className="text-muted mb-0">Genetik analiz panelindesin.</p>
                             <label className="btn btn-sm btn-outline-primary mt-2">
                                 <i className="bi bi-camera-fill me-2"></i> Fotoğrafı Güncelle
                                 <input type="file" accept="image/*" className="d-none" onChange={handlePhotoUpdate} />
@@ -347,16 +336,42 @@ export default function ProfilSayfasi() {
 
                                             {/* Çocuklar */}
                                             <div className="d-flex justify-content-center gap-4 flex-wrap">
-                                                {soyAgaci.gelecek_kusak.cocuklar.map((cocuk: any) => (
-                                                    <div key={cocuk.id} className="tree-node-card p-3 shadow-sm text-center animate-fade-in delay-1" style={{background: 'white', borderRadius: '15px', minWidth: '200px', borderBottom: getCardBorder(cocuk.durum)}}>
-                                                        <div className="mb-2">{cocuk.cinsiyet === 'Erkek' ? <i className="bi bi-gender-male fs-4 text-primary"></i> : <i className="bi bi-gender-female fs-4 text-danger"></i>}</div>
-                                                        <div className="fw-bold text-dark">{cocuk.isim}</div>
-                                                        <div className="small text-primary fw-bold mb-1" style={{fontSize: '0.8rem'}}>TC: {cocuk.tc_no || cocuk.tc || 'Simülasyon'}</div>
-                                                        <div className="badge bg-light text-dark border mb-2">Risk: {cocuk.risk_orani}</div>
-                                                        <div>{getStatusBadge(cocuk.durum)}</div>
-                                                        <div className="small text-muted mt-2 fst-italic" style={{fontSize: '0.85em'}}>{cocuk.aciklama}</div>
-                                                    </div>
-                                                ))}
+                                                {soyAgaci.gelecek_kusak.                                                cocuklar.map((cocuk: any) => {
+                                                    const cocukTc = cocuk.tc_no || cocuk.tc || cocuk.kurgusal_tc;
+                                                    const hasValidTc = cocukTc && cocukTc !== 'Simülasyon' && cocukTc.length === 11;
+                                                    
+                                                    return (
+                                                        <div key={cocuk.id} className="tree-node-card p-3 shadow-sm text-center animate-fade-in delay-1" style={{background: 'white', borderRadius: '15px', minWidth: '200px', borderBottom: getCardBorder(cocuk.durum)}}>
+                                                            <div className="mb-2">{cocuk.cinsiyet === 'Erkek' ? <i className="bi bi-gender-male fs-4 text-primary"></i> : <i className="bi bi-gender-female fs-4 text-danger"></i>}</div>
+                                                            <div className="fw-bold text-dark">{cocuk.isim}</div>
+                                                            <div className="small text-primary fw-bold mb-1" style={{fontSize: '0.8rem'}}>TC: {cocukTc || 'Simülasyon'}</div>
+                                                            <div className="badge bg-light text-dark border mb-2">Risk: {cocuk.risk_orani}</div>
+                                                            <div>{getStatusBadge(cocuk.durum)}</div>
+                                                            <div className="small text-muted mt-2 fst-italic" style={{fontSize: '0.85em'}}>{cocuk.aciklama}</div>
+                                                            
+                                                            {/* Create Account Button - Only show if child has valid TC */}
+                                                            {hasValidTc && user?.kurgusal_tc && (
+                                                                <div className="mt-3">
+                                                                    <button
+                                                                        type="button"
+                                                                        className="btn btn-sm btn-primary rounded-pill px-3"
+                                                                        onClick={() => {
+                                                                            // Navigate to registration with parent_tc and child_tc
+                                                                            const params = new URLSearchParams({
+                                                                                parent_tc: user.kurgusal_tc || user.kendi_tc || '',
+                                                                                child_tc: cocukTc
+                                                                            });
+                                                                            router.push(`/kayit-ol?${params.toString()}`);
+                                                                        }}
+                                                                    >
+                                                                        <i className="bi bi-person-plus me-1"></i>
+                                                                        Hesap Oluştur
+                                                                    </button>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
                                             </div>
                                         </div>
                                     ) : (

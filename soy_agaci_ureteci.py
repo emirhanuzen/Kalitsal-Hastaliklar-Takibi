@@ -17,11 +17,19 @@ from genetics.person import kisi_olustur
 from genetics.carrier_guarantee import ensure_at_least_one_carrier
 
 
-def uret_dinamik_soy_agaci(kullanici_kayit_verisi, hastalik_listesi_sql):
-    """GENETİK SİMÜLASYONLU ANA ALGORİTMA FONKSİYONU"""
+def uret_dinamik_soy_agaci(kullanici_kayit_verisi, hastalik_listesi_sql, sql_conn=None):
+    """
+    GENETİK SİMÜLASYONLU ANA ALGORİTMA FONKSİYONU
     
+    Args:
+        kullanici_kayit_verisi: User registration data
+        hastalik_listesi_sql: Disease list from SQL
+        sql_conn: Optional SQL connection for TC uniqueness checking
+    """
     # 1. Bireyler sözlüğünü sıfırla
     reset_bireyler()
+    from genetics.person import reset_tc_tracker
+    reset_tc_tracker()  # Reset TC tracker for new tree generation
     TUM_BIREYLER = get_bireyler()
 
     # 2. Hastalık detaylarını ve alel frekanslarını hesapla
@@ -73,9 +81,9 @@ def uret_dinamik_soy_agaci(kullanici_kayit_verisi, hastalik_listesi_sql):
 
     # 5. Ağacı üret ve genleri aktar
     # Önce ataları üret (geriye doğru)
-    agaci_uret_ve_genleri_aktar(kok_birey_id, GERIYE_HEDEF_KUSAK, True)
+    agaci_uret_ve_genleri_aktar(kok_birey_id, GERIYE_HEDEF_KUSAK, True, sql_conn)
     # Sonra çocukları ve ileri kuşakları üret (ileri doğru)
-    agaci_uret_ve_genleri_aktar(kok_birey_id, ILERIYE_HEDEF_KUSAK, False)
+    agaci_uret_ve_genleri_aktar(kok_birey_id, ILERIYE_HEDEF_KUSAK, False, sql_conn)
 
     # 6. Kullanıcının genotipini ebeveynlerinden kalıtım yoluyla hesapla
     # (Kullanıcıya doğrudan hastalık atanmaz, sadece genotip hesaplanır)

@@ -588,300 +588,429 @@ def api_profil():
         }), 500
 
 
+def _format_tree_data(agac_verisi, user_birey_id, user_data):
+    """
+    Helper function to format family tree data for frontend consumption.
+    Returns standardized structure: { gecmis_kusaklar: [], gelecek_kusak: { ebeveynler: [], cocuklar: [] } }
+    """
+    if not agac_verisi:
+        return {
+            "gecmis_kusaklar": [],
+            "gelecek_kusak": {
+                "ebeveynler": [],
+                "cocuklar": []
+            }
+        }
+    
+    # Find user's birey in the tree
+    kullanici_birey = None
+    if user_birey_id:
+        for birey in agac_verisi:
+            if str(birey.get("birey_id")) == str(user_birey_id):
+                kullanici_birey = birey
+                break
+    
+    if not kullanici_birey:
+        kullanici_birey = agac_verisi[0] if agac_verisi else None
+    
+    # Group by generation
+    kusaklar = {}
+    for birey in agac_verisi:
+        kusak = birey.get("kusak", 0)
+        if kusak not in kusaklar:
+            kusaklar[kusak] = []
+        kusaklar[kusak].append(birey)
+    
+    # Format past generations
+    kullanici_kusak = kullanici_birey.get("kusak", 0) if kullanici_birey else 0
+    gecmis_kusaklar = []
+    kusak_isimleri = {
+        1: "1. Kuşak (Büyük Büyük Büyük Ebeveynler)",
+        2: "2. Kuşak (Büyük Büyük Ebeveynler)",
+        3: "3. Kuşak (Büyük Ebeveynler)",
+        4: "4. Kuşak (Dede/Nene)",
+        5: "5. Kuşak (Ebeveynler)",
+        6: "6. Kuşak (Siz)"
+    }
+    
+    for kusak_num in sorted([k for k in kusaklar.keys() if k <= kullanici_kusak], reverse=True):
+        bireyler = []
+        for birey in kusaklar[kusak_num]:
+            # Determine role
+            if str(birey.get("birey_id")) == str(user_birey_id):
+                rol = "Kendisi"
+            elif kullanici_birey:
+                if birey.get("birey_id") == kullanici_birey.get("anne_id"):
+                    rol = "Anne"
+                elif birey.get("birey_id") == kullanici_birey.get("baba_id"):
+                    rol = "Baba"
+                else:
+                    anne = next((b for b in agac_verisi if b.get("birey_id") == kullanici_birey.get("anne_id")), None)
+                    baba = next((b for b in agac_verisi if b.get("birey_id") == kullanici_birey.get("baba_id")), None)
+                    if anne and birey.get("birey_id") == anne.get("anne_id"):
+                        rol = "Anneanne"
+                    elif anne and birey.get("birey_id") == anne.get("baba_id"):
+                        rol = "Dede (Anne)"
+                    elif baba and birey.get("birey_id") == baba.get("anne_id"):
+                        rol = "Babaanne"
+                    elif baba and birey.get("birey_id") == baba.get("baba_id"):
+                        rol = "Dede (Baba)"
+                    else:
+                        rol = "Akraba"
+            else:
+                rol = "Akraba"
+            
+            # Determine status
+            durum = "Sağlıklı"
+            hastaliklar = birey.get("hastaliklar", "Sağlıklı")
+            if isinstance(hastaliklar, list) and hastaliklar:
+                if any(h.get("durum") == "Hasta" for h in hastaliklar):
+                    durum = "Hasta"
+                elif any(h.get("durum") == "Taşıyıcı" for h in hastaliklar):
+                    durum = "Taşıyıcı"
+            elif hastaliklar != "Sağlıklı":
+                durum = "Riskli"
+            
+            bireyler.append({
+                "id": str(birey.get("birey_id", "")),
+                "isim": f"{birey.get('isim', '')} {birey.get('soyad', '')}".strip(),
+                "rol": rol,
+                "durum": durum,
+                "cinsiyet": birey.get("cinsiyet", "Bilinmiyor")
+            })
+        
+        gecmis_kusaklar.append({
+            "seviye": kusak_num,
+            "baslik": kusak_isimleri.get(kusak_num, f"{kusak_num}. Kuşak"),
+            "bireyler": bireyler
+        })
+    
+    # Format future generation (children)
+    cocuklar = []
+    ebeveynler = []
+    
+    if kullanici_birey:
+        kullanici_durum = "Sağlıklı"
+        kullanici_hastaliklar = kullanici_birey.get("hastaliklar", "Sağlıklı")
+        if isinstance(kullanici_hastaliklar, list) and kullanici_hastaliklar:
+            if any(h.get("durum") == "Hasta" for h in kullanici_hastaliklar):
+                kullanici_durum = "Hasta"
+            elif any(h.get("durum") == "Taşıyıcı" for h in kullanici_hastaliklar):
+                kullanici_durum = "Taşıyıcı"
+        
+        ebeveynler.append({
+            "isim": f"{kullanici_birey.get('isim', '')} {kullanici_birey.get('soyad', '')}".strip() or (user_data.get('isim', '') + ' ' + user_data.get('soyad', '')).strip(),
+            "rol": "Baba (Siz)" if kullanici_birey.get("cinsiyet") == "Erkek" else "Anne (Siz)",
+            "durum": kullanici_durum,
+            "cinsiyet": kullanici_birey.get("cinsiyet", "Bilinmiyor")
+        })
+        
+        # Get children
+        from services.local_ai_service import get_disease_information
+        
+        for birey in agac_verisi:
+            if (birey.get("anne_id") == kullanici_birey.get("birey_id") or
+                    birey.get("baba_id") == kullanici_birey.get("birey_id")):
+                cocuk_durum = "Sağlıklı"
+                cocuk_hastaliklar = birey.get("hastaliklar", "Sağlıklı")
+                cocuk_aciklama = "Bu çocuk için genetik risk analizi yapıldı. Şu anda bilinen bir kalıtsal hastalık riski tespit edilmedi."
+                risk_orani = "%10"
+                
+                if isinstance(cocuk_hastaliklar, list) and cocuk_hastaliklar:
+                    if any(h.get("durum") == "Hasta" for h in cocuk_hastaliklar):
+                        cocuk_durum = "Hasta"
+                    elif any(h.get("durum") == "Taşıyıcı" for h in cocuk_hastaliklar):
+                        cocuk_durum = "Taşıyıcı"
+                    
+                    if cocuk_hastaliklar:
+                        ilk_hastalik = cocuk_hastaliklar[0] if isinstance(cocuk_hastaliklar[0], dict) else None
+                        if ilk_hastalik:
+                            hastalik_adi = ilk_hastalik.get("hastalik", "")
+                            durum = ilk_hastalik.get("durum", "Taşıyıcı")
+                            kalitim_sekli = ilk_hastalik.get("kalitim_sekli", "Çekinik")
+                            
+                            if durum == "Hasta":
+                                risk_seviyesi = "Yüksek"
+                                risk_orani = "%50"
+                                cocuk_aciklama = f"⚠️ {hastalik_adi} riski tespit edildi. Çocuğunuzun durumu için mutlaka bir genetik uzmanına başvurmanız ve gerekli testleri yaptırmanız önerilir."
+                            elif durum == "Taşıyıcı":
+                                risk_seviyesi = "Orta"
+                                risk_orani = "%25"
+                                cocuk_aciklama = f"ℹ️ {hastalik_adi} taşıyıcılığı tespit edildi. Çocuğunuzun genetik durumunu netleştirmek için bir genetik danışmana başvurmanız faydalı olacaktır."
+                            else:
+                                risk_seviyesi = "Düşük"
+                                risk_orani = "%10"
+                                cocuk_aciklama = f"ℹ️ {hastalik_adi} için düşük risk tespit edildi. Detaylı bilgi için genetik danışmanlık almanız önerilir."
+                
+                # Extract TC from child birey
+                cocuk_tc = birey.get("kurgusal_tc") or birey.get("kendi_tc") or ""
+                
+                cocuklar.append({
+                    "id": str(birey.get("birey_id", "")),
+                    "isim": f"{birey.get('isim', '')} {birey.get('soyad', '')}".strip(),
+                    "cinsiyet": birey.get("cinsiyet", "Bilinmiyor"),
+                    "durum": cocuk_durum,
+                    "risk_orani": risk_orani,
+                    "aciklama": cocuk_aciklama,
+                    "tc": cocuk_tc,  # Include TC for "Create Account for Child" flow
+                    "tc_no": cocuk_tc,  # Alias for backward compatibility
+                    "kurgusal_tc": cocuk_tc  # Another alias
+                })
+    
+    return {
+        "gecmis_kusaklar": gecmis_kusaklar,
+        "gelecek_kusak": {
+            "ebeveynler": ebeveynler,
+            "cocuklar": cocuklar
+        }
+    }
+
+
 @app.route('/api/family-tree', methods=['GET'])
 def api_family_tree():
-    """JSON API - Soy ağacı verileri"""
+    """
+    REFACTORED: Check-or-Create Family Tree Endpoint
+    - Validates TC (user_id) input
+    - Checks if Family Tree exists in database
+    - If exists: Fetches and returns it
+    - If missing: Generates new tree, saves it, then returns it
+    - Returns standardized JSON: { "status": "success", "data": {...} }
+    """
+    import pyodbc
+    from bson import ObjectId
+    import datetime
+    
+    sql_conn = None
+    
     try:
+        # ============================================================================
+        # 1. INPUT VALIDATION - TC (User ID) Check
+        # ============================================================================
         user_id = request.args.get('user_id')
         family_tree_id = request.args.get('family_tree_id')
-
-        if not user_id and not family_tree_id:
-            return jsonify({
-                "durum": "hata",
-                "mesaj": "user_id veya family_tree_id parametresi gerekli."
-            }), 400
-
-        import pyodbc
-        from bson import ObjectId
-
-        # Eğer user_id verilmişse, family_tree_id'yi bul
-        if user_id and not family_tree_id:
+        
+        # If family_tree_id is provided directly, use it (backward compatibility)
+        if family_tree_id and not user_id:
             try:
-                user_id = int(user_id)
-            except ValueError:
-                return jsonify({
-                    "durum": "hata",
-                    "mesaj": "Geçersiz user_id formatı."
-                }), 400
-
-            sql_conn = None
-            try:
-                sql_conn = pyodbc.connect(SQL_SERVER_CONNECTION_STRING)
-                cursor = sql_conn.cursor()
-                cursor.execute("""
-                    SELECT FamilyTreeID_Mongo, BireyID_Mongo
-                    FROM Users 
-                    WHERE UserID = ?
-                """, (user_id,))
-
-                user_row = cursor.fetchone()
-                if not user_row:
+                tree_object_id = ObjectId(family_tree_id)
+                family_trees_collection = mongo_db["FamilyTrees"]
+                tree_doc = family_trees_collection.find_one({"_id": tree_object_id})
+                
+                if tree_doc:
+                    agac_verisi = tree_doc.get("agac_verisi", [])
+                    formatted_data = _format_tree_data(agac_verisi, None, None)
                     return jsonify({
-                        "durum": "hata",
-                        "mesaj": "Kullanıcı bulunamadı."
+                        "status": "success",
+                        "data": formatted_data
+                    }), 200
+                else:
+                    return jsonify({
+                        "status": "error",
+                        "message": "Family tree not found with provided family_tree_id."
                     }), 404
-
-                family_tree_id = str(user_row[0]) if user_row[0] else None
-                birey_id = str(user_row[1]) if user_row[1] else None
-
             except Exception as e:
                 return jsonify({
-                    "durum": "hata",
-                    "mesaj": f"Veritabanı hatası: {str(e)}"
-                }), 500
-            finally:
-                if sql_conn:
-                    sql_conn.close()
-
-        if not family_tree_id:
+                    "status": "error",
+                    "message": f"Invalid family_tree_id format: {str(e)}"
+                }), 400
+        
+        # Validate user_id (TC) is provided
+        if not user_id:
             return jsonify({
-                "durum": "hata",
-                "mesaj": "Kullanıcının soy ağacı bulunamadı."
+                "status": "error",
+                "message": "user_id (TC) parameter is required."
+            }), 400
+        
+        # Validate user_id format (should be numeric)
+        try:
+            user_id_int = int(user_id)
+        except ValueError:
+            return jsonify({
+                "status": "error",
+                "message": f"Invalid user_id format. Expected numeric value, got: {user_id}"
+            }), 400
+        
+        # ============================================================================
+        # 2. DATABASE QUERY - Check if Family Tree EXISTS
+        # ============================================================================
+        sql_conn = pyodbc.connect(SQL_SERVER_CONNECTION_STRING)
+        cursor = sql_conn.cursor()
+        
+        # Get user info including FamilyTreeID_Mongo
+        # Note: Cinsiyet might not exist in Users table, so we'll default to 'Erkek' if missing
+        cursor.execute("""
+            SELECT UserID, FamilyTreeID_Mongo, BireyID_Mongo, Isim, Soyad, 
+                   DogumTarihi, KurgusalTC
+            FROM Users 
+            WHERE UserID = ?
+        """, (user_id_int,))
+        
+        user_row = cursor.fetchone()
+        if not user_row:
+            return jsonify({
+                "status": "error",
+                "message": f"User not found with user_id: {user_id}"
             }), 404
-
-        # MongoDB'den soy ağacını çek
+        
+        # Extract user data
+        user_data = {
+            'user_id': user_row[0],
+            'family_tree_id': str(user_row[1]) if user_row[1] else None,
+            'birey_id': str(user_row[2]) if user_row[2] else None,
+            'isim': user_row[3] or '',
+            'soyad': user_row[4] or '',
+            'dogum_tarihi': user_row[5],
+            'kurgusal_tc': user_row[6] or '',
+            'cinsiyet': 'Erkek'  # Default, will be determined from tree data if available
+        }
+        
+        # Try to get cinsiyet from the tree if birey_id exists
+        if user_data['birey_id'] and user_data['family_tree_id']:
+            try:
+                family_trees_collection = mongo_db["FamilyTrees"]
+                tree_object_id = ObjectId(user_data['family_tree_id'])
+                tree_doc = family_trees_collection.find_one({"_id": tree_object_id})
+                if tree_doc:
+                    agac_verisi_temp = tree_doc.get("agac_verisi", [])
+                    for birey in agac_verisi_temp:
+                        if str(birey.get("birey_id")) == user_data['birey_id']:
+                            user_data['cinsiyet'] = birey.get("cinsiyet", "Erkek")
+                            break
+            except:
+                pass
+        
+        # ============================================================================
+        # CASE A: Family Tree EXISTS - Fetch and return
+        # ============================================================================
+        if user_data['family_tree_id']:
+            try:
+                family_trees_collection = mongo_db["FamilyTrees"]
+                tree_object_id = ObjectId(user_data['family_tree_id'])
+                tree_doc = family_trees_collection.find_one({"_id": tree_object_id})
+                
+                if tree_doc and tree_doc.get("agac_verisi"):
+                    agac_verisi = tree_doc.get("agac_verisi", [])
+                    formatted_data = _format_tree_data(agac_verisi, user_data['birey_id'], user_data)
+                    
+                    return jsonify({
+                        "status": "success",
+                        "data": formatted_data
+                    }), 200
+            except Exception as e:
+                print(f">>> WARNING: Family tree exists in SQL but MongoDB fetch failed: {e}", file=sys.stderr)
+                # Fall through to CASE B - regenerate tree
+        
+        # ============================================================================
+        # CASE B: Family Tree MISSING - Generate, Save, then Return
+        # ============================================================================
+        print(f">>> INFO: Family tree not found for user_id {user_id_int}. Generating new tree...")
+        
+        # Get disease list for tree generation
+        hastalik_listesi = get_hastalik_listesi(sql_conn)
+        if not hastalik_listesi:
+            return jsonify({
+                "status": "error",
+                "message": "Disease list could not be retrieved from database."
+            }), 500
+        
+        # Prepare user data for tree generation
+        dogum_tarihi = user_data['dogum_tarihi']
+        if isinstance(dogum_tarihi, str):
+            # Try to parse date string
+            try:
+                dogum_tarihi = datetime.datetime.strptime(dogum_tarihi, '%Y-%m-%d').date()
+            except:
+                dogum_tarihi = datetime.date.today()
+        elif not isinstance(dogum_tarihi, datetime.date):
+            dogum_tarihi = datetime.date.today()
+        
+        kullanici_kayit_verisi = {
+            "isim": user_data['isim'],
+            "soyad": user_data['soyad'],
+            "dogum_tarihi": dogum_tarihi,
+            "kendi_tc": user_data['kurgusal_tc'],
+            "cinsiyet": user_data['cinsiyet']
+        }
+        
+        # Generate family tree using the algorithm
+        try:
+            from soy_agaci_ureteci import uret_dinamik_soy_agaci
+            
+            soy_agaci_dokumani, kok_birey_id, cocuk_bilgileri = uret_dinamik_soy_agaci(
+                kullanici_kayit_verisi, hastalik_listesi, sql_conn
+            )
+            
+            print(f">>> INFO: Generated family tree with {len(soy_agaci_dokumani)} individuals.")
+            
+            # Remove duplicates before saving
+            birey_map = {}
+            for birey in soy_agaci_dokumani:
+                birey_id = birey.get("birey_id")
+                if birey_id is None:
+                    continue
+                if birey_id not in birey_map:
+                    birey_map[birey_id] = birey
+            
+            soy_agaci_dokumani = list(birey_map.values())
+            
+        except Exception as e:
+            print(f"!!! ERROR: Family tree generation failed: {e}", file=sys.stderr)
+            import traceback
+            traceback.print_exc()
+            return jsonify({
+                "status": "error",
+                "message": f"Family tree generation failed: {str(e)}"
+            }), 500
+        
+        # Save to MongoDB
         try:
             family_trees_collection = mongo_db["FamilyTrees"]
-            tree_object_id = ObjectId(family_tree_id)
-            tree_doc = family_trees_collection.find_one({"_id": tree_object_id})
-
-            if not tree_doc:
-                return jsonify({
-                    "durum": "hata",
-                    "mesaj": "Soy ağacı bulunamadı."
-                }), 404
-
-            agac_verisi = tree_doc.get("agac_verisi", [])
-
-            if not agac_verisi:
-                return jsonify({
-                    "durum": "basarili",
-                    "data": {
-                        "gecmis_kusaklar": [],
-                        "gelecek_kusak": {
-                            "ebeveynler": [],
-                            "cocuklar": []
-                        }
-                    }
-                }), 200
-
-            # Kullanıcının birey ID'sini bul
-            user_birey_id = None
-            if user_id:
-                try:
-                    sql_conn_check = pyodbc.connect(SQL_SERVER_CONNECTION_STRING)
-                    cursor_check = sql_conn_check.cursor()
-                    cursor_check.execute("SELECT BireyID_Mongo FROM Users WHERE UserID = ?", (user_id,))
-                    user_row = cursor_check.fetchone()
-                    if user_row and user_row[0]:
-                        user_birey_id = str(user_row[0])
-                    sql_conn_check.close()
-                except:
-                    pass
-
-            # Kullanıcı bireyini bul
-            kullanici_birey = None
-            for birey in agac_verisi:
-                if str(birey.get("birey_id")) == user_birey_id:
-                    kullanici_birey = birey
-                    break
-
-            if not kullanici_birey:
-                kullanici_birey = agac_verisi[0] if agac_verisi else None
-
-            # Kuşaklara göre grupla
-            kusaklar = {}
-            for birey in agac_verisi:
-                kusak = birey.get("kusak", 0)
-                if kusak not in kusaklar:
-                    kusaklar[kusak] = []
-                kusaklar[kusak].append(birey)
-
-            # Geçmiş kuşakları formatla (kullanıcının kuşağı dahil)
-            kullanici_kusak = kullanici_birey.get("kusak", 0) if kullanici_birey else 0
-            gecmis_kusaklar = []
-            kusak_isimleri = {
-                1: "1. Kuşak (Büyük Büyük Büyük Ebeveynler)",
-                2: "2. Kuşak (Büyük Büyük Ebeveynler)",
-                3: "3. Kuşak (Büyük Ebeveynler)",
-                4: "4. Kuşak (Dede/Nene)",
-                5: "5. Kuşak (Ebeveynler)",
-                6: "6. Kuşak (Siz)"
-            }
-
-            # Kullanıcının kuşağı dahil tüm geçmiş kuşakları göster
-            for kusak_num in sorted([k for k in kusaklar.keys() if k <= kullanici_kusak], reverse=True):
-                bireyler = []
-                for birey in kusaklar[kusak_num]:
-                    # Kullanıcının kendisi mi kontrol et
-                    if str(birey.get("birey_id")) == user_birey_id:
-                        rol = "Kendisi"
-                    elif birey.get("birey_id") == kullanici_birey.get("anne_id"):
-                        rol = "Anne"
-                    elif birey.get("birey_id") == kullanici_birey.get("baba_id"):
-                        rol = "Baba"
-                    elif kullanici_birey:
-                        anne = next((b for b in agac_verisi if b.get("birey_id") == kullanici_birey.get("anne_id")),
-                                    None)
-                        baba = next((b for b in agac_verisi if b.get("birey_id") == kullanici_birey.get("baba_id")),
-                                    None)
-                        if anne and birey.get("birey_id") == anne.get("anne_id"):
-                            rol = "Anneanne"
-                        elif anne and birey.get("birey_id") == anne.get("baba_id"):
-                            rol = "Dede (Anne)"
-                        elif baba and birey.get("birey_id") == baba.get("anne_id"):
-                            rol = "Babaanne"
-                        elif baba and birey.get("birey_id") == baba.get("baba_id"):
-                            rol = "Dede (Baba)"
-
-                    durum = "Sağlıklı"
-                    hastaliklar = birey.get("hastaliklar", "Sağlıklı")
-                    if isinstance(hastaliklar, list) and hastaliklar:
-                        if any(h.get("durum") == "Hasta" for h in hastaliklar):
-                            durum = "Hasta"
-                        elif any(h.get("durum") == "Taşıyıcı" for h in hastaliklar):
-                            durum = "Taşıyıcı"
-                    elif hastaliklar != "Sağlıklı":
-                        durum = "Riskli"
-
-                    bireyler.append({
-                        "id": str(birey.get("birey_id", "")),
-                        "isim": f"{birey.get('isim', '')} {birey.get('soyad', '')}".strip(),
-                        "rol": rol,
-                        "durum": durum,
-                        "cinsiyet": birey.get("cinsiyet", "Bilinmiyor")
-                    })
-
-                gecmis_kusaklar.append({
-                    "seviye": kusak_num,
-                    "baslik": kusak_isimleri.get(kusak_num, f"{kusak_num}. Kuşak"),
-                    "bireyler": bireyler
-                })
-
-            # Gelecek kuşak (çocuklar)
-            cocuklar = []
-            ebeveynler = []
-
-            if kullanici_birey:
-                kullanici_durum = "Sağlıklı"
-                kullanici_hastaliklar = kullanici_birey.get("hastaliklar", "Sağlıklı")
-                if isinstance(kullanici_hastaliklar, list) and kullanici_hastaliklar:
-                    if any(h.get("durum") == "Hasta" for h in kullanici_hastaliklar):
-                        kullanici_durum = "Hasta"
-                    elif any(h.get("durum") == "Taşıyıcı" for h in kullanici_hastaliklar):
-                        kullanici_durum = "Taşıyıcı"
-
-                ebeveynler.append({
-                    "isim": f"{kullanici_birey.get('isim', '')} {kullanici_birey.get('soyad', '')}".strip(),
-                    "rol": "Baba (Siz)" if kullanici_birey.get("cinsiyet") == "Erkek" else "Anne (Siz)",
-                    "durum": kullanici_durum,
-                    "cinsiyet": kullanici_birey.get("cinsiyet", "Bilinmiyor")
-                })
-
-                # Çocuklar için model açıklaması üretmek için import
-                from services.local_ai_service import get_disease_information
-                
-                for birey in agac_verisi:
-                    if (birey.get("anne_id") == kullanici_birey.get("birey_id") or
-                            birey.get("baba_id") == kullanici_birey.get("birey_id")):
-                        cocuk_durum = "Sağlıklı"
-                        cocuk_hastaliklar = birey.get("hastaliklar", "Sağlıklı")
-                        cocuk_aciklama = "Bu çocuk için genetik risk analizi yapıldı. Şu anda bilinen bir kalıtsal hastalık riski tespit edilmedi."
-                        risk_orani = "%10"
-                        
-                        if isinstance(cocuk_hastaliklar, list) and cocuk_hastaliklar:
-                            if any(h.get("durum") == "Hasta" for h in cocuk_hastaliklar):
-                                cocuk_durum = "Hasta"
-                            elif any(h.get("durum") == "Taşıyıcı" for h in cocuk_hastaliklar):
-                                cocuk_durum = "Taşıyıcı"
-                            
-                            # Çocuk için hastalık varsa, model ile detaylı açıklama üret
-                            if cocuk_hastaliklar:
-                                ilk_hastalik = cocuk_hastaliklar[0] if isinstance(cocuk_hastaliklar[0], dict) else None
-                                if ilk_hastalik:
-                                    hastalik_adi = ilk_hastalik.get("hastalik", "")
-                                    durum = ilk_hastalik.get("durum", "Taşıyıcı")
-                                    kalitim_sekli = ilk_hastalik.get("kalitim_sekli", "Çekinik")
-                                    
-                                    # Risk seviyesi belirleme
-                                    if durum == "Hasta":
-                                        risk_seviyesi = "Yüksek"
-                                        risk_orani = "%50"
-                                    elif durum == "Taşıyıcı":
-                                        risk_seviyesi = "Orta"
-                                        risk_orani = "%25"
-                                    else:
-                                        risk_seviyesi = "Düşük"
-                                        risk_orani = "%10"
-                                    
-                                    # Risk varsa kısa ve net mesaj
-                                    if durum == "Hasta":
-                                        cocuk_aciklama = f"⚠️ {hastalik_adi} riski tespit edildi. Çocuğunuzun durumu için mutlaka bir genetik uzmanına başvurmanız ve gerekli testleri yaptırmanız önerilir."
-                                    elif durum == "Taşıyıcı":
-                                        cocuk_aciklama = f"ℹ️ {hastalik_adi} taşıyıcılığı tespit edildi. Çocuğunuzun genetik durumunu netleştirmek için bir genetik danışmana başvurmanız faydalı olacaktır."
-                                    else:
-                                        # Model ile açıklama üret (düşük risk durumunda)
-                                        try:
-                                            ai_result = get_disease_information(
-                                                hastalik_adi,
-                                                kalitim_sekli,
-                                                f"Çocuk: {durum}",
-                                                risk_seviyesi,
-                                                50 if durum == "Taşıyıcı" else 75,
-                                                f"Çocuğunuz için {hastalik_adi} risk analizi"
-                                            )
-                                            if ai_result.get('basarili'):
-                                                import re
-                                                model_aciklama = re.sub(r'<[^>]+>', '', ai_result.get('bilgi_icerigi', '')).strip()
-                                                # Kısa özet + doktor önerisi
-                                                cocuk_aciklama = f"ℹ️ {hastalik_adi} için düşük risk tespit edildi. Detaylı bilgi için genetik danışmanlık almanız önerilir."
-                                            else:
-                                                cocuk_aciklama = f"ℹ️ {hastalik_adi} risk analizi yapıldı. Genetik danışmanlık almanız önerilir."
-                                        except Exception as e:
-                                            print(f"!!! Çocuk açıklama hatası: {e}", file=sys.stderr)
-                                            cocuk_aciklama = f"ℹ️ {hastalik_adi} risk analizi yapıldı. Genetik danışmanlık almanız önerilir."
-
-                        cocuklar.append({
-                            "id": str(birey.get("birey_id", "")),
-                            "isim": f"{birey.get('isim', '')} {birey.get('soyad', '')}".strip(),
-                            "cinsiyet": birey.get("cinsiyet", "Bilinmiyor"),
-                            "durum": cocuk_durum,
-                            "risk_orani": risk_orani,
-                            "aciklama": cocuk_aciklama
-                        })
-
-            return jsonify({
-                "durum": "basarili",
-                "data": {
-                    "gecmis_kusaklar": gecmis_kusaklar,
-                    "gelecek_kusak": {
-                        "ebeveynler": ebeveynler,
-                        "cocuklar": cocuklar
-                    }
-                }
-            }), 200
-
+            insert_result = family_trees_collection.insert_one({"agac_verisi": soy_agaci_dokumani})
+            mongo_tree_id = str(insert_result.inserted_id)
+            print(f">>> INFO: Family tree saved to MongoDB with ID: {mongo_tree_id}")
         except Exception as e:
+            print(f"!!! ERROR: Failed to save family tree to MongoDB: {e}", file=sys.stderr)
             return jsonify({
-                "durum": "hata",
-                "mesaj": f"MongoDB hatası: {str(e)}"
+                "status": "error",
+                "message": f"Failed to save family tree: {str(e)}"
             }), 500
+        
+        # Update SQL Server with FamilyTreeID_Mongo and BireyID_Mongo
+        try:
+            cursor.execute("""
+                UPDATE Users 
+                SET FamilyTreeID_Mongo = ?, BireyID_Mongo = ?
+                WHERE UserID = ?
+            """, (mongo_tree_id, kok_birey_id, user_id_int))
+            sql_conn.commit()
+            print(f">>> INFO: Updated SQL Server with FamilyTreeID_Mongo: {mongo_tree_id}")
+        except Exception as e:
+            print(f"!!! ERROR: Failed to update SQL Server: {e}", file=sys.stderr)
+            sql_conn.rollback()
+            # Continue anyway - tree is saved in MongoDB
+        
+        # Format and return the generated tree
+        formatted_data = _format_tree_data(soy_agaci_dokumani, kok_birey_id, user_data)
+        
+        return jsonify({
+            "status": "success",
+            "data": formatted_data
+        }), 200
 
     except Exception as e:
+        print(f"!!! ERROR in api_family_tree: {e}", file=sys.stderr)
+        import traceback
+        traceback.print_exc()
         return jsonify({
-            "durum": "hata",
-            "mesaj": f"Soy ağacı yüklenirken hata: {str(e)}"
+            "status": "error",
+            "message": f"Family tree operation failed: {str(e)}"
         }), 500
+    finally:
+        if sql_conn:
+            try:
+                sql_conn.close()
+            except:
+                pass
 
 
 @app.route('/api/hastalik-bilgileri', methods=['POST'])
