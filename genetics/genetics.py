@@ -84,6 +84,41 @@ def determine_initial_genotype(hastalik_adi, cinsiyet):
     return None
 
 
+def determine_spouse_genotype(hastalik_adi, cinsiyet):
+    """
+    Simüle edilmiş eş için dengeli genotip belirler.
+    Taşıyıcı/hasta olma ihtimalini makul seviyede artırır ki çocukların hasta olma şansı artsın.
+    """
+    details = HASTALIK_DETAYLARI.get(hastalik_adi)
+    if not details:
+        return None
+    
+    sekil = details['sekil']
+    rand_num = random.random()
+
+    if sekil == 'Çekinik':
+        # Dengeli oranlar: %90 sağlıklı, %7 taşıyıcı, %3 hasta
+        if rand_num < 0.9:
+            return "NN"  # Sağlıklı
+        elif rand_num < 0.97:
+            return "NT"  # Taşıyıcı
+        else:
+            return "TT"  # Hasta
+    elif sekil == 'X-Bağlı Çekinik':
+        if cinsiyet == 'Erkek':
+            # Erkek için: %97 sağlıklı, %3 hasta
+            return "XnY" if rand_num < 0.97 else "XtY"
+        else:  # Kadın
+            # Kadın için: %90 sağlıklı, %7 taşıyıcı, %3 hasta
+            if rand_num < 0.9:
+                return "XnXn"  # Sağlıklı
+            elif rand_num < 0.97:
+                return "XnXt"  # Taşıyıcı
+            else:
+                return "XtXt"  # Hasta
+    return None
+
+
 def determine_phenotype(hastalik_adi, genotype, cinsiyet):
     """Genotipten fenotipi belirler."""
     details = HASTALIK_DETAYLARI.get(hastalik_adi)

@@ -8,6 +8,7 @@ from genetics.constants import SOYADLARI
 from genetics.person import kisi_olustur
 from genetics.genetics import (
     determine_initial_genotype,
+    determine_spouse_genotype,
     determine_phenotype,
     inherit_allele,
     get_hastalik_detaylari
@@ -136,6 +137,30 @@ def agaci_uret_ve_genleri_aktar(birey_id, hedef_kusak, is_ata_uretimi, sql_conn=
 
     # --- ÇOCUK ÜRETİMİ (İleriye Doğru) ---
     else:
+        # TURKISH NAMING CONVENTION - Gender-Based Surname Assignment:
+        # Rule 1: If parent is MALE (Father) -> Child inherits father's surname exactly
+        # Rule 2: If parent is FEMALE (Mother) -> Child takes father's surname (simulated)
+        #         Since father is simulated, assign random surname different from mother's
+        #         IMPORTANT: All children of the same mother must have the SAME surname (same father)
+        parent_cinsiyeti = mevcut_birey["cinsiyet"]
+        parent_soyadi = mevcut_birey["soyad"]
+        
+        # Kadın kullanıcı için soy ismi döngü dışında bir kez seç (tüm çocuklar aynı babanın soy ismini alsın)
+        if parent_cinsiyeti == "Kadın":
+            # MOTHER: Child takes father's surname (simulated with random surname)
+            # Get available surnames (excluding mother's surname)
+            available_soyadlari = [s for s in SOYADLARI if s != parent_soyadi]
+            
+            # If somehow all surnames match (shouldn't happen), use a fallback
+            if not available_soyadlari:
+                available_soyadlari = SOYADLARI.copy()
+            
+            # Select random surname different from mother - ONCE for all children
+            cocugun_soyadi_kadin = random.choice(available_soyadlari)
+        else:
+            # Erkek kullanıcı için soy ismi zaten belli (kendi soy ismi)
+            cocugun_soyadi_kadin = None
+        
         # TEST AMAÇLI: En az 1 çocuk üret (0 yerine 1'den başlat)
         cocuk_sayisi = random.randint(1, 3)
         for _ in range(cocuk_sayisi):
@@ -145,27 +170,13 @@ def agaci_uret_ve_genleri_aktar(birey_id, hedef_kusak, is_ata_uretimi, sql_conn=
 
             cocugun_cinsiyeti = random.choice(["Erkek", "Kadın"])
             
-            # TURKISH NAMING CONVENTION - Gender-Based Surname Assignment:
-            # Rule 1: If parent is MALE (Father) -> Child inherits father's surname exactly
-            # Rule 2: If parent is FEMALE (Mother) -> Child takes father's surname (simulated)
-            #         Since father is simulated, assign random surname different from mother's
-            parent_cinsiyeti = mevcut_birey["cinsiyet"]
-            parent_soyadi = mevcut_birey["soyad"]
-            
+            # Soy isim ataması
             if parent_cinsiyeti == "Erkek":
                 # FATHER: Child inherits father's surname
                 cocugun_soyadi = parent_soyadi
             else:
-                # MOTHER: Child takes father's surname (simulated with random surname)
-                # Get available surnames (excluding mother's surname)
-                available_soyadlari = [s for s in SOYADLARI if s != parent_soyadi]
-                
-                # If somehow all surnames match (shouldn't happen), use a fallback
-                if not available_soyadlari:
-                    available_soyadlari = SOYADLARI.copy()
-                
-                # Select random surname different from mother
-                cocugun_soyadi = random.choice(available_soyadlari)
+                # MOTHER: All children get the same simulated father's surname
+                cocugun_soyadi = cocugun_soyadi_kadin
 
             # Generate child with unique TC and new surname
             cocuk = kisi_olustur(cocugun_cinsiyeti, cocugun_soyadi, cocuk_dogum_yili, mevcut_kusak + 1, sql_conn=sql_conn)
@@ -176,19 +187,19 @@ def agaci_uret_ve_genleri_aktar(birey_id, hedef_kusak, is_ata_uretimi, sql_conn=
             baba = None
             if mevcut_birey["cinsiyet"] == "Kadın":
                 anne = mevcut_birey
-                # Eş için başlangıç genotipleri oluştur
+                # Eş için başlangıç genotipleri oluştur - AGRESİF (daha fazla taşıyıcı/hasta)
                 baba_genotipleri = {}
                 hastalik_detaylari = get_hastalik_detaylari()
                 for hastalik_adi in hastalik_detaylari:
-                    baba_genotipleri[hastalik_adi] = determine_initial_genotype(hastalik_adi, "Erkek")
+                    baba_genotipleri[hastalik_adi] = determine_spouse_genotype(hastalik_adi, "Erkek")
                 baba = {"genotip": baba_genotipleri, "cinsiyet": "Erkek"}
             else:  # mevcut_birey Erkek ise
                 baba = mevcut_birey
-                # Eş için başlangıç genotipleri oluştur
+                # Eş için başlangıç genotipleri oluştur - AGRESİF (daha fazla taşıyıcı/hasta)
                 anne_genotipleri = {}
                 hastalik_detaylari = get_hastalik_detaylari()
                 for hastalik_adi in hastalik_detaylari:
-                    anne_genotipleri[hastalik_adi] = determine_initial_genotype(hastalik_adi, "Kadın")
+                    anne_genotipleri[hastalik_adi] = determine_spouse_genotype(hastalik_adi, "Kadın")
                 anne = {"genotip": anne_genotipleri, "cinsiyet": "Kadın"}
 
             cocuk_genotipleri = {}
