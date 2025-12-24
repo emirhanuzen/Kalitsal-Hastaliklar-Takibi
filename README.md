@@ -1,158 +1,158 @@
-# 🧬 KRAP – Kalıtsal Risk Analiz Platformu
+# 🧬 KRAP – Hereditary Risk Analysis Platform
 
-**KRAP (Kalıtsal Risk Analiz Platformu)**, kalıtsal hastalık risklerini analiz etmek için tasarlanmış, hibrit veritabanı mimarisi (SQL Server + MongoDB) kullanan modern bir **web tabanlı Mendel genetiği simülasyon platformudur**.
+**KRAP (Hereditary Risk Analysis Platform)** is a modern **web-based Mendelian genetics simulation platform** designed to analyze hereditary disease risks, utilizing a hybrid database architecture (SQL Server + MongoDB).
 
-Platform, gerçek kişi verisi yerine tamamen **kurgusal (sentetik) soy ağaçları** üretir; ancak bu ağaçlardaki kalıtım, **Mendel kalıtım kuralları** (çekinik, taşıyıcı, X'e bağlı vb.) ile bilimsel olarak hesaplanır. Sistem, hastalıkları rastgele atamak yerine:
+The platform generates completely **fictional (synthetic) family trees** instead of real person data; however, inheritance in these trees is scientifically calculated using **Mendelian inheritance rules** (recessive, carrier, X-linked, etc.). Instead of randomly assigning diseases, the system:
 
-- ✅ **Alel frekanslarını** hesaplar
-- ✅ **Genotip → fenotip** dönüşümünü uygular
-- ✅ Kullanıcının kendisi ve ailesi için **olasılıksal risk tahmini** üretir
-- ✅ **Google Gemini AI** ile hastalık bilgilerini zenginleştirir
+- ✅ Calculates **allele frequencies**
+- ✅ Applies **genotype → phenotype** transformation
+- ✅ Generates **probabilistic risk predictions** for the user and their family
+- ✅ Enriches disease information with **Google Gemini AI**
 
 ---
 
-## 🏗️ Mimari ve Teknoloji Yığını
+## 🏗️ Architecture and Technology Stack
 
 ### Backend (Python/Flask)
 - **Framework**: Flask 2.0+ (RESTful API)
-- **Veritabanları**:
-  - **Microsoft SQL Server**: Kullanıcı hesapları, hastalık master verisi
-  - **MongoDB**: Soy ağaçları, birey dokümanları (NoSQL)
-- **Bağlantı Kütüphaneleri**:
-  - `pyodbc` – SQL Server bağlantısı
-  - `pymongo` – MongoDB bağlantısı
-- **Güvenlik**: `bcrypt` – Şifre hashleme
-- **AI Entegrasyonu**: `google-generativeai` – Gemini API
+- **Databases**:
+  - **Microsoft SQL Server**: User accounts, disease master data
+  - **MongoDB**: Family trees, individual documents (NoSQL)
+- **Connection Libraries**:
+  - `pyodbc` – SQL Server connection
+  - `pymongo` – MongoDB connection
+- **Security**: `bcrypt` – Password hashing
+- **AI Integration**: `google-generativeai` – Gemini API
 
 ### Frontend (Next.js/React)
 - **Framework**: Next.js 16.0.7 (App Router)
-- **UI Kütüphaneleri**:
+- **UI Libraries**:
   - React 19.2.0
   - Bootstrap 5.3.8
   - Tailwind CSS 4
-- **Dil**: TypeScript 5
+- **Language**: TypeScript 5
 - **Linter/Formatter**: Biome 2.2.0
 
-### Özellikler
-- 🎨 Modern, responsive UI tasarımı
-- 🔄 Next.js API Routes ile Flask backend'e proxy
-- 📱 Mobil uyumlu arayüz
-- ⚡ Hızlı ve optimize edilmiş performans
+### Features
+- 🎨 Modern, responsive UI design
+- 🔄 Next.js API Routes proxy to Flask backend
+- 📱 Mobile-friendly interface
+- ⚡ Fast and optimized performance
 
 ---
 
-## 📁 Proje Yapısı
+## 📁 Project Structure
 
 ```
 KRAP/
-├── app.py                    # 🚀 Flask API Backend - Ana uygulama dosyası
-├── config.py                 # ⚙️ Veritabanı ve uygulama konfigürasyonu
-├── database.py               # 🗄️ Hibrit veritabanı bağlantıları (SQL + MongoDB)
-├── validators.py             # ✅ Girdi doğrulama ve iş kuralları
-├── routes.py                 # 🌐 Ek API route'ları (kayıt, test vb.)
-├── soy_agaci_ureteci.py      # 🌳 Soy ağacı üretim algoritması
+├── app.py                    # 🚀 Flask API Backend - Main application file
+├── config.py                 # ⚙️ Database and application configuration
+├── database.py               # 🗄️ Hybrid database connections (SQL + MongoDB)
+├── validators.py             # ✅ Input validation and business rules
+├── routes.py                 # 🌐 Additional API routes (registration, test, etc.)
+├── soy_agaci_ureteci.py      # 🌳 Family tree generation algorithm
 │
-├── services/                 # 🧠 İş mantığı ve servisler
-│   ├── registration_service.py  # Kayıt işlemleri (Yeni aile / Mevcut aileye katıl)
-│   ├── gemini_service.py         # Google Gemini AI entegrasyonu
-│   └── tree_cleanup.py          # Yardımcı temizlik fonksiyonları
+├── services/                 # 🧠 Business logic and services
+│   ├── registration_service.py  # Registration operations (New family / Join existing family)
+│   ├── gemini_service.py         # Google Gemini AI integration
+│   └── tree_cleanup.py          # Helper cleanup functions
 │
-├── genetics/                 # 🔬 Mendel genetiği hesaplamaları
-│   ├── constants.py          # İsim listeleri, sabitler, genetik parametreler
-│   ├── genetics.py           # Alel frekansları, genotip üretimi, X-bağlı/çekinik kurallar
-│   ├── person.py             # Kişi (birey) nesnesi oluşturma
-│   ├── family_tree.py        # Soy ağacı üzerinde gen aktarımı (ata → çocuk)
-│   ├── risk_analysis.py      # Kullanıcı bazlı kalıtsal risk analizi
-│   └── carrier_guarantee.py  # Taşıyıcı garantisi algoritması
+├── genetics/                 # 🔬 Mendelian genetics calculations
+│   ├── constants.py          # Name lists, constants, genetic parameters
+│   ├── genetics.py           # Allele frequencies, genotype generation, X-linked/recessive rules
+│   ├── person.py             # Person (individual) object creation
+│   ├── family_tree.py        # Gene transmission on family tree (ancestor → child)
+│   ├── risk_analysis.py      # User-based hereditary risk analysis
+│   └── carrier_guarantee.py  # Carrier guarantee algorithm
 │
-├── frontend/                 # ⚛️ Next.js Frontend Uygulaması
+├── frontend/                 # ⚛️ Next.js Frontend Application
 │   ├── app/                  # Next.js App Router
-│   │   ├── page.tsx          # Ana giriş sayfası (Login)
-│   │   ├── kayit-ol/         # Kayıt sayfası
+│   │   ├── page.tsx          # Main login page
+│   │   ├── kayit-ol/         # Registration page
 │   │   │   └── page.tsx
-│   │   ├── profil/           # Profil sayfası (Soy ağacı + Risk analizi)
+│   │   ├── profil/           # Profile page (Family tree + Risk analysis)
 │   │   │   └── page.tsx
-│   │   ├── api/              # Next.js API route'ları (Flask'a proxy)
+│   │   ├── api/              # Next.js API routes (proxy to Flask)
 │   │   │   ├── login/route.ts
 │   │   │   ├── register/route.ts
 │   │   │   ├── profil/route.ts
 │   │   │   ├── family-tree/route.ts
 │   │   │   └── hastalik-bilgileri/route.ts
 │   │   ├── layout.tsx        # Root layout
-│   │   └── globals.css        # Global CSS stilleri
-│   ├── package.json          # Node.js bağımlılıkları
-│   ├── next.config.ts        # Next.js yapılandırması (API proxy)
-│   ├── tsconfig.json         # TypeScript yapılandırması
-│   └── biome.json            # Biome linter/formatter ayarları
+│   │   └── globals.css        # Global CSS styles
+│   ├── package.json          # Node.js dependencies
+│   ├── next.config.ts        # Next.js configuration (API proxy)
+│   ├── tsconfig.json         # TypeScript configuration
+│   └── biome.json            # Biome linter/formatter settings
 │
-└── requirements.txt          # Python bağımlılıkları
+└── requirements.txt          # Python dependencies
 ```
 
 ---
 
-## 🌟 Temel Özellikler ve Senaryolar
+## 🌟 Core Features and Scenarios
 
-### 1️⃣ Senaryo 1 – Yeni Aile Evreni Başlatma
+### 1️⃣ Scenario 1 – Starting a New Family Universe
 
-Kullanıcı, kendine ait **kurgusal TC**, doğum tarihi, cinsiyet vb. bilgilerle kayıt olur. Sistem:
+The user registers with their own **fictional ID number**, date of birth, gender, etc. The system:
 
-1. Kullanıcının **yaşına göre kuşak konumunu** belirler (ör. 3. kuşak = ebeveyn)
-2. **Geriye doğru** ata kuşakları üretir:
-   - Anne, baba
-   - Büyükanne, büyükbaba
-   - Büyük büyükanne/büyükbaba (5-6 kuşak geriye)
-3. **İleriye doğru** çocuk ve torun kuşakları simüle eder
-4. Her birey için **genotip** ve buna bağlı **hastalık durumu** (Sağlıklı / Taşıyıcı / Hasta) üretir
-5. Tüm soy ağacı hibrit veritabanı modelinde saklanır:
-   - **SQL Server** → Kullanıcı hesapları (`Users` tablosu)
-   - **MongoDB** → Aile ağaçları (`FamilyTrees.agac_verisi` dokümanı)
+1. Determines the user's **generation position based on age** (e.g., 3rd generation = parent)
+2. Generates **ancestor generations backwards**:
+   - Mother, father
+   - Grandmother, grandfather
+   - Great-grandmother/grandfather (5-6 generations back)
+3. Simulates **forward** child and grandchild generations
+4. Generates **genotype** and corresponding **disease status** (Healthy / Carrier / Affected) for each individual
+5. Stores the entire family tree in a hybrid database model:
+   - **SQL Server** → User accounts (`Users` table)
+   - **MongoDB** → Family trees (`FamilyTrees.agac_verisi` document)
 
-### 2️⃣ Senaryo 2 – Mevcut Aileye Katılma (Join Family)
+### 2️⃣ Scenario 2 – Joining an Existing Family
 
-Kullanıcı, kayıt olurken:
-- **Ebeveyn Kurgusal TC** (ebeveyninin kurgusal TC'si)
-- **Kendi Kurgusal TC** (ağaçta kendisine atanmış kurgusal TC)
+When registering, the user enters:
+- **Parent Fictional ID** (parent's fictional ID number)
+- **Own Fictional ID** (fictional ID assigned to them in the tree)
 
-bilgilerini girer. İş akışı:
+Workflow:
 
-1. SQL tarafında ebeveyn kullanıcısı bulunur (`FamilyTreeID_Mongo`, `BireyID_Mongo`)
-2. MongoDB'de aynı `FamilyTreeID_Mongo` ile aile ağacı çekilir
-3. `kurgusal_tc == kendi_tc` olan birey, **ağaç içinde** bulunur
-4. Ebeveyn ile çocuk arasında **soy bağı doğrulanır** (`anne_id == parent_uuid` veya `baba_id == parent_uuid`)
-5. Bu birey için daha önce kullanıcı hesabı açılmış mı kontrol edilir
-6. Her şey yolundaysa, yeni kullanıcı SQL'de bu bireye bağlanır
+1. Parent user is found on SQL side (`FamilyTreeID_Mongo`, `BireyID_Mongo`)
+2. Family tree is retrieved from MongoDB with the same `FamilyTreeID_Mongo`
+3. Individual with `fictional_id == own_id` is found **within the tree**
+4. **Lineage relationship** between parent and child is verified (`mother_id == parent_uuid` or `father_id == parent_uuid`)
+5. Checks if a user account has been created for this individual before
+6. If everything is correct, the new user is linked to this individual in SQL
 
-Bu sayede **aynı aile evreni içinde** birden fazla kullanıcı, farklı bireylere karşılık gelerek sistemi birlikte kullanabilir.
+This allows **multiple users within the same family universe** to use the system together, corresponding to different individuals.
 
-### 3️⃣ Risk Analizi ve AI Destekli Bilgilendirme
+### 3️⃣ Risk Analysis and AI-Powered Information
 
-- **Mendel Genetiği Hesaplamaları**: Alel frekansları, genotip-fenotip dönüşümü
-- **Kalıtsal Risk Analizi**: Kullanıcının önceki kuşaklardan hastalık geçiş olasılıkları
-- **Google Gemini AI Entegrasyonu**: Her hastalık için dinamik, kişiselleştirilmiş bilgilendirme
-- **Görsel Soy Ağacı**: Geçmiş kuşaklar ve gelecek simülasyonu (çocuklar) görselleştirme
+- **Mendelian Genetics Calculations**: Allele frequencies, genotype-phenotype transformation
+- **Hereditary Risk Analysis**: Disease transmission probabilities from previous generations for the user
+- **Google Gemini AI Integration**: Dynamic, personalized information for each disease
+- **Visual Family Tree**: Visualization of past generations and future simulation (children)
 
 ---
 
-## 🚀 Kurulum ve Çalıştırma
+## 🚀 Installation and Running
 
-### Ön Gereksinimler
+### Prerequisites
 
-- **Python 3.x** (3.8+ önerilir)
-- **Node.js 18+** ve npm
-- **Microsoft SQL Server** (Express Edition yeterli)
-- **MongoDB** (Local veya MongoDB Atlas)
-- **ODBC Driver** (SQL Server için, Windows'ta genelde hazır gelir)
+- **Python 3.x** (3.8+ recommended)
+- **Node.js 18+** and npm
+- **Microsoft SQL Server** (Express Edition is sufficient)
+- **MongoDB** (Local or MongoDB Atlas)
+- **ODBC Driver** (for SQL Server, usually comes pre-installed on Windows)
 
-### 1. Depoyu Klonla
+### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/<kullanici>/KRAP.git
+git clone https://github.com/<user>/KRAP.git
 cd KRAP
 ```
 
-### 2. Backend Kurulumu
+### 2. Backend Installation
 
-#### Python Sanal Ortamı Oluştur
+#### Create Python Virtual Environment
 
 ```bash
 # Windows (PowerShell)
@@ -164,13 +164,13 @@ python3 -m venv venv
 source venv/bin/activate
 ```
 
-#### Python Bağımlılıklarını Yükle
+#### Install Python Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-Başlıca paketler:
+Main packages:
 - Flask>=2.0.0
 - flask-cors>=4.0.0
 - pyodbc>=4.0.0
@@ -178,50 +178,50 @@ Başlıca paketler:
 - bcrypt>=4.0.0
 - google-generativeai>=0.3.0
 
-#### Veritabanı Konfigürasyonu
+#### Database Configuration
 
-`config.py` dosyasında aşağıdaki alanları güncelleyin:
+Update the following fields in the `config.py` file:
 
 ```python
-# MongoDB Bağlantı Ayarları
-MONGO_CONNECTION_STRING = 'mongodb://localhost:27017/'  # veya MongoDB Atlas connection string
+# MongoDB Connection Settings
+MONGO_CONNECTION_STRING = 'mongodb://localhost:27017/'  # or MongoDB Atlas connection string
 MONGO_DATABASE_NAME = 'KRAP_NoSQL_DB'
 
-# MS SQL Server Ayarları
-SQL_SERVER_SUNUCU_ADI = 'localhost\\SQLEXPRESS'  # Kendi sunucu adınız
-SQL_SERVER_VERITABANI_ADI = 'KRAP'  # Veritabanı adı
+# MS SQL Server Settings
+SQL_SERVER_SUNUCU_ADI = 'localhost\\SQLEXPRESS'  # Your server name
+SQL_SERVER_VERITABANI_ADI = 'KRAP'  # Database name
 ```
 
-#### SQL Server Veritabanı Hazırlığı
+#### SQL Server Database Preparation
 
-1. `KRAP` adında bir veritabanı oluşturun
-2. En azından aşağıdaki tablolar gereklidir:
+1. Create a database named `KRAP`
+2. At minimum, the following tables are required:
    - `Users` (Email, PasswordHash, KurgusalTC, DogumTarihi, Isim, Soyad, FamilyTreeID_Mongo, BireyID_Mongo, ...)
    - `Hastaliklar` (HastalikAdi, GorulmeOrani, KalitimSekli, ...)
 
-#### MongoDB Hazırlığı
+#### MongoDB Preparation
 
-- Local MongoDB kullanıyorsanız, MongoDB servisinin çalıştığından emin olun
-- MongoDB Atlas kullanıyorsanız, connection string'i `config.py`'de güncelleyin
-- `FamilyTrees` koleksiyonu otomatik oluşturulacaktır
+- If using local MongoDB, ensure the MongoDB service is running
+- If using MongoDB Atlas, update the connection string in `config.py`
+- The `FamilyTrees` collection will be created automatically
 
-### 3. Frontend Kurulumu
+### 3. Frontend Installation
 
 ```bash
 cd frontend
 npm install
 ```
 
-### 4. Uygulamayı Çalıştırma
+### 4. Running the Application
 
 #### Backend (Flask) - Terminal 1
 
 ```bash
-# Proje kök dizininde
+# In project root directory
 python app.py
 ```
 
-Flask uygulaması varsayılan olarak şu adreste çalışır:
+The Flask application runs by default at:
 ```
 http://localhost:5000
 ```
@@ -229,88 +229,88 @@ http://localhost:5000
 #### Frontend (Next.js) - Terminal 2
 
 ```bash
-# frontend/ dizininde
+# In frontend/ directory
 npm run dev
 ```
 
-Next.js frontend uygulaması şu adreste çalışır:
+The Next.js frontend application runs at:
 ```
 http://localhost:3000
 ```
 
-**Not:** Frontend, Next.js API Routes üzerinden Flask backend'e proxy yapar. Her iki sunucunun da çalışıyor olması gerekir.
+**Note:** The frontend proxies to the Flask backend via Next.js API Routes. Both servers must be running.
 
 ---
 
-## 📖 Kullanım
+## 📖 Usage
 
-### Giriş Yapma
+### Logging In
 
-1. `http://localhost:3000` adresine gidin
-2. Kurgusal TC kimlik numaranız ve şifrenizle giriş yapın
+1. Go to `http://localhost:3000`
+2. Log in with your fictional ID number and password
 
-### Yeni Kayıt
+### New Registration
 
-1. "Yeni Hesap Oluştur" butonuna tıklayın
-2. Kişisel bilgilerinizi girin (İsim, Soyad, Cinsiyet, Doğum Tarihi, TC)
-3. Hesap bilgilerinizi girin (E-posta, Şifre)
-4. **Ebeveyn TC** alanını boş bırakırsanız → **Senaryo 1** (Yeni aile evreni)
-5. **Ebeveyn TC** alanını doldurursanız → **Senaryo 2** (Mevcut aileye katılma)
+1. Click the "Create New Account" button
+2. Enter your personal information (Name, Surname, Gender, Date of Birth, ID)
+3. Enter your account information (Email, Password)
+4. Leave the **Parent ID** field empty → **Scenario 1** (New family universe)
+5. Fill in the **Parent ID** field → **Scenario 2** (Join existing family)
 
-### Profil ve Risk Analizi
+### Profile and Risk Analysis
 
-- **Profil Sekmesi**: Kişisel bilgileriniz ve AI destekli risk analizi
-- **Soy Ağacı Sekmesi**: 
-  - **Atalarım**: Geçmiş kuşaklar görselleştirmesi
-  - **Çocuklarım**: Gelecek simülasyonu (olasılıksal)
-
----
-
-## 🔬 Genetik Hesaplama Detayları
-
-### Mendel Kalıtım Kuralları
-
-Platform şu kalıtım şekillerini destekler:
-
-1. **Çekinik (Autosomal Recessive)**
-   - Genotip: NN (Normal), NT (Taşıyıcı), TT (Hasta)
-   - Fenotip: TT → Hasta, NT → Taşıyıcı, NN → Sağlıklı
-
-2. **X-Bağlı Çekinik (X-Linked Recessive)**
-   - Erkek: XnY (Sağlıklı), XtY (Hasta)
-   - Kadın: XnXn (Sağlıklı), XnXt (Taşıyıcı), XtXt (Hasta)
-
-### Alel Frekansı Hesaplama
-
-- **Çekinik**: `q = √(görülme oranı)`, `p = 1 - q`
-- **X-Bağlı**: `q = görülme oranı`, `p = 1 - q`
-
-### Risk Analizi
-
-- Kullanıcının ebeveynlerinden ve önceki kuşaklardan hastalık geçiş olasılıkları hesaplanır
-- Her hastalık için **risk seviyesi** (Düşük, Orta, Yüksek, Çok Yüksek) belirlenir
-- **Taşıyıcı olabilirlik** yüzdesi hesaplanır
+- **Profile Tab**: Your personal information and AI-powered risk analysis
+- **Family Tree Tab**: 
+  - **My Ancestors**: Visualization of past generations
+  - **My Children**: Future simulation (probabilistic)
 
 ---
 
-## 🤝 Katkıda Bulunma
+## 🔬 Genetic Calculation Details
 
-Öneri, hata bildirimi veya katkı göndermek isterseniz:
+### Mendelian Inheritance Rules
 
-- Issue açabilirsiniz
-- Pull Request gönderebilirsiniz
-- Kod içinde `TODO` / `DEBUG` notlarını takip ederek eksik alanları iyileştirebilirsiniz
+The platform supports the following inheritance patterns:
 
-KRAP halen **araştırma ve prototip** niteliğinde bir projedir; özellikle genetik modelleme ve risk analizi katmanında yapılacak katkılar, gerçekçi simülasyon kalitesini önemli ölçüde artıracaktır. 🙌
+1. **Recessive (Autosomal Recessive)**
+   - Genotype: NN (Normal), NT (Carrier), TT (Affected)
+   - Phenotype: TT → Affected, NT → Carrier, NN → Healthy
+
+2. **X-Linked Recessive**
+   - Male: XnY (Healthy), XtY (Affected)
+   - Female: XnXn (Healthy), XnXt (Carrier), XtXt (Affected)
+
+### Allele Frequency Calculation
+
+- **Recessive**: `q = √(prevalence rate)`, `p = 1 - q`
+- **X-Linked**: `q = prevalence rate`, `p = 1 - q`
+
+### Risk Analysis
+
+- Disease transmission probabilities from the user's parents and previous generations are calculated
+- **Risk level** (Low, Medium, High, Very High) is determined for each disease
+- **Carrier probability** percentage is calculated
 
 ---
 
-## 📝 Lisans
+## 🤝 Contributing
 
-Bu proje araştırma ve eğitim amaçlıdır. Gerçek tıbbi kararlar için kullanılmamalıdır.
+If you want to suggest, report bugs, or contribute:
+
+- You can open an issue
+- You can send a Pull Request
+- You can improve missing areas by following `TODO` / `DEBUG` notes in the code
+
+KRAP is currently a **research and prototype** project; contributions, especially in the genetic modeling and risk analysis layer, will significantly improve the quality of realistic simulation. 🙌
 
 ---
 
-## 🔗 İletişim ve Destek
+## 📝 License
 
-Sorularınız veya önerileriniz için GitHub Issues kullanabilirsiniz.
+This project is for research and educational purposes. It should not be used for real medical decisions.
+
+---
+
+## 🔗 Contact and Support
+
+You can use GitHub Issues for questions or suggestions.
