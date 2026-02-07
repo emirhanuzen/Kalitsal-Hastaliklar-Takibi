@@ -1,5 +1,16 @@
 # 🧬 KRAP – Hereditary Risk Analysis Platform
 
+![TEKNOFEST Logo](https://cdn.teknofest.org/media/upload/userFormUpload/teknofest_logo_2024_eng.png)
+
+> **🏆 TEKNOFEST 2026 - Technology for Humanity Competition Project**
+> *Category: Health and First Aid*
+
+**KRAP (Hereditary Risk Analysis Platform)** is a modern **web-based Mendelian genetics simulation platform** developed for TEKNOFEST, designed to analyze hereditary disease risks using a hybrid database architecture (SQL Server + MongoDB).
+
+This project aims to raise awareness about hereditary diseases (such as SMA, Cystic Fibrosis) and contribute to preventive health services by predicting genetic risks through mathematical modeling and AI, offering a domestic and national solution for health tech.
+
+---
+
 **KRAP (Hereditary Risk Analysis Platform)** is a modern **web-based Mendelian genetics simulation platform** designed to analyze hereditary disease risks, utilizing a hybrid database architecture (SQL Server + MongoDB).
 
 The platform generates completely **fictional (synthetic) family trees** instead of real person data; however, inheritance in these trees is scientifically calculated using **Mendelian inheritance rules** (recessive, carrier, X-linked, etc.). Instead of randomly assigning diseases, the system:
