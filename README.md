@@ -1,6 +1,6 @@
 # 🧬 KRAP – Hereditary Risk Analysis Platform
 
-![TEKNOFEST Logo](https://cdn.teknofest.org/media/upload/userFormUpload/teknofest_logo_2024_eng.png)
+![TEKNOFEST Logo](https://erzurum.edu.tr/Content/etugeneldosyalar/3049a1e0-292f-400a-abe5-bf645872dcd1.jpg)
 
 > **🏆 TEKNOFEST 2026 - Technology for Humanity Competition Project**
 > *Category: Health and First Aid*
